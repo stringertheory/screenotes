@@ -17,7 +17,7 @@ BUNDLE_VARIABLE = 'ORCHARD_BUNDLE'
 # The Mac app's Contents/MacOS/python links to this file in the environment, a link to Python's own app binary.
 APP_PYTHON = 'app-python'
 # Windows' WinForms crashes on anything but an .ico, and GTK and Qt take a PNG.
-ICONS = {'darwin': ROOT / 'assets' / 'orchard.icns', 'win32': ROOT / 'assets' / 'orchard.ico'}
+ICONS = {'darwin': ROOT / 'assets' / 'screenotes.icns', 'win32': ROOT / 'assets' / 'screenotes.ico'}
 DEFAULT_ICON = ROOT / 'public' / 'apple-touch-icon.png'
 # The Mac's standard Window menu, which pywebview leaves out, as (title, action, key) with None for a separator.
 # pywebview's page view has its own ⌘W, but the key never reaches it, so Close Window carries it.

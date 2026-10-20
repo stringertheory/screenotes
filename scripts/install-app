@@ -14,7 +14,7 @@ app=${${1:-~/Applications}:A}/Orchard.app
 rm -rf $app
 mkdir -p $app/Contents/MacOS $app/Contents/Resources
 clang -O2 -DSTART_SCRIPT -o $app/Contents/MacOS/Orchard $root/scripts/app/macos-launcher.c
-cp $root/assets/orchard.icns $app/Contents/Resources/Orchard.icns
+cp $root/assets/screenotes.icns $app/Contents/Resources/Orchard.icns
 cat > $app/Contents/Info.plist <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

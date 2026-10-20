@@ -42,8 +42,8 @@ svg { width: var(--icon); height: var(--icon); stroke-width: 1.5; flex-shrink: 0
 /* Keyboard focus scrolls a tile clear of the sticky header, ring and all: the header's padding and search bar, then a step. */
 html { scroll-padding-top: calc(var(--s4) + var(--search-height) + var(--s2) * 2); }
 .wordmark { justify-self: start; padding: 0; min-height: var(--s10); display: flex; align-items: center; }
-.lockup { width: auto; height: 26px; }
-.lockup path, .welcome-mark path, .compact-mark path { fill: currentColor; }
+.lockup { display: inline-flex; align-items: center; gap: 7px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.lockup svg { width: 28px; height: 28px; }
 .compact-mark { display: none; width: 30px; height: 30px; }
 @media (max-width: 480px) { .wordmark .lockup { display: none; } .compact-mark { display: block; } }
 .welcome-mark { width: var(--s16); height: var(--s16); margin-bottom: var(--s4); }

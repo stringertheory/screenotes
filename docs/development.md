@@ -152,7 +152,7 @@ Orchard logs a warning when it falls back to the CPU.
 
 The app's name, command name and ports live in `app.json`, which the window title, wordmark, messages, data folder and browser storage keys read. These carry the name directly, and need to change by hand:
 
-- The logo, in `web/src/Logo.tsx`, `public/` and `docs/`, and the app icons in `assets/`.
+- The logo, in `web/src/Logo.tsx`, `public/` and `docs/`, and the app icons in `assets/`. Orchard's own logo is kept as `docs/orchard-logo*.svg` for `docs/orchard-readme.md`.
 - The package name in `package.json`.
 - The `orchard` and `orchard.cmd` launchers.
 - The Mac app in `scripts/install-app`: its name, bundle identifier and icon.

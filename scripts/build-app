@@ -134,7 +134,7 @@ def build_mac(build: Path) -> Path:
     subprocess.run(['clang', '-O2', f'-mmacosx-version-min={oldest}', '-o', str(macos / APP['name']), str(TEMPLATES / 'macos-launcher.c')], check=True)
     # Python runs from inside Contents/MacOS, so macOS shows its window as this app's, with one icon in the Dock.
     (macos / 'python').symlink_to(os.path.relpath(runtime / 'bin' / MAC_PYTHON, macos))
-    shutil.copy2(ROOT / 'assets' / 'orchard.icns', resources / f'{APP["name"]}.icns')
+    shutil.copy2(ROOT / 'assets' / 'screenotes.icns', resources / f'{APP["name"]}.icns')
     plist = {
         'CFBundleName': APP['name'], 'CFBundleDisplayName': APP['name'], 'CFBundleIdentifier': IDENTIFIER,
         'CFBundleExecutable': APP['name'], 'CFBundleIconFile': f'{APP["name"]}.icns', 'CFBundlePackageType': 'APPL',
@@ -173,7 +173,7 @@ def build_windows(build: Path) -> Path:
     install_packages(site_packages)
     copy_app(folder / 'app')
     compile_python(site_packages, folder / 'app')
-    subprocess.run([str(CSC), '/nologo', '/optimize', '/target:winexe', f'/win32icon:{ROOT / "assets" / "orchard.ico"}',
+    subprocess.run([str(CSC), '/nologo', '/optimize', '/target:winexe', f'/win32icon:{ROOT / "assets" / "screenotes.ico"}',
                     f'/out:{folder / (APP["name"] + ".exe")}', str(TEMPLATES / 'windows-launcher.cs')], check=True)
     archive = build / ARTIFACTS['win32']
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as file:
