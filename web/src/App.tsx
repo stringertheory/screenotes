@@ -45,7 +45,8 @@ export default function App() {
   const [picked, setPicked] = useState<Picture | null>(null);
   const [query, setQuery] = useState(new URLSearchParams(location.search).get('q') || '');
   const [submitted, setSubmitted] = useState(query);
-  const [mode, setMode] = useState<SearchMode>('visual');
+  // The menu bar's searches are of text, and ask for it with mode=name.
+  const [mode, setMode] = useState<SearchMode>(new URLSearchParams(location.search).get('mode') === 'name' ? 'name' : 'visual');
   const [status, setStatus] = useState<Status | null>(null);
   const search = status?.library?.search ?? null;
   const visualReady = !!search && searchable(search);
@@ -121,6 +122,15 @@ export default function App() {
   // Poll quickly while progress is moving, gently otherwise.
   const polling = status?.library?.scan.state === 'scanning' || ['downloading', 'loading', 'indexing'].includes(search?.state ?? '') ? 1000 : 4000;
   useEffect(() => { void refreshStatus(); const timer = setInterval(refreshStatus, polling); return () => clearInterval(timer); }, [refreshStatus, polling]);
+  // A screenshot opened from the menu bar, as ?image=<id>, shows in the viewer once the folder is known.
+  const linked = useRef(new URLSearchParams(location.search).get('image'));
+  useEffect(() => {
+    const id = linked.current;
+    if (!root || !id) return;
+    linked.current = null;
+    history.replaceState(null, '', location.pathname + (submitted ? `?q=${encodeURIComponent(submitted)}` : ''));
+    request<Results>(`/api/images?${new URLSearchParams({ id })}`).then(data => { if (data.items[0]?.id === id) setPicked(data.items[0]); }, e => setError((e as Error).message));
+  }, [root, submitted]);
   // Another folder was opened, here or from the command line: its subfolders and searches start fresh.
   useEffect(() => {
     if (!status) return;

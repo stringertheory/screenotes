@@ -279,3 +279,34 @@ main[data-timeline] .gallery { margin-right: calc(var(--page) + var(--timeline))
  .image-details { overflow: visible; padding: var(--s6) var(--page); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+
+/* The menu bar's popover, drawn after Screenotate's: system type, a clear page over the popover's own material,
+   and screenshots cropped to their top in a white well. */
+html.menu-page, html.menu-page body { background: transparent; overflow: hidden; }
+html.menu-page { --menu-well: #ffffff; --menu-field: #ffffff; --menu-field-line: #c8c8c8; --menu-hover: #0000000f; }
+html.menu-page[data-theme='dark'] { --menu-well: #1e1e1e; --menu-field: #2a2a2a; --menu-field-line: #4a4a4a; --menu-hover: #ffffff14; }
+.menu { height: 100vh; display: flex; flex-direction: column; padding: 14px 14px 12px; font: 13px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); -webkit-user-select: none; user-select: none; }
+.menu-top { position: relative; display: flex; align-items: center; gap: 8px; }
+.menu-search { flex: 1; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; background: var(--menu-field); border: 1px solid var(--menu-field-line); border-radius: 7px; }
+.menu-search:focus-within { outline: 3px solid -webkit-focus-ring-color; outline-offset: 0; border-color: transparent; }
+.menu-search svg { width: 15px; height: 15px; flex: none; color: var(--muted); }
+.menu-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: inherit; -webkit-appearance: none; appearance: none; }
+.menu-search input::placeholder { color: var(--muted); }
+.menu-search input::-webkit-search-cancel-button { cursor: default; }
+.menu-gear { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: default; }
+.menu-gear:hover, .menu-gear[aria-expanded='true'] { background: var(--menu-hover); color: var(--ink); }
+.menu-gear svg { width: 20px; height: 20px; }
+.menu-settings { position: absolute; z-index: 1; top: 34px; right: 0; min-width: 190px; padding: 5px; background: var(--menu-field); border: 1px solid var(--menu-field-line); border-radius: 8px; box-shadow: 0 6px 24px #00000030; }
+.menu-settings button { display: flex; align-items: center; gap: 6px; width: 100%; padding: 3px 8px; border: 0; border-radius: 4px; background: transparent; font: inherit; color: inherit; text-align: left; cursor: default; }
+.menu-settings button:hover { background: -webkit-focus-ring-color; color: #fff; }
+.menu-settings svg, .menu-check { width: 13px; height: 13px; flex: none; }
+.menu-settings p { margin: 0; padding: 3px 8px; color: var(--muted); font-size: 12px; }
+.menu-settings hr { margin: 4px 8px; border: 0; border-top: 1px solid var(--menu-field-line); }
+.menu-label { margin: 10px 2px 4px; }
+.menu-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--menu-well); border: 1px solid var(--menu-field-line); }
+.menu-shot { flex: none; display: block; width: 100%; height: 96px; padding: 0; border: 0; background: var(--soft); cursor: default; overflow: hidden; box-shadow: 0 0 0 1px #00000014; }
+.menu-shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: filter var(--motion) var(--ease); }
+.menu-shot:hover img { filter: brightness(.92); }
+.menu-shot:focus-visible { outline: 3px solid -webkit-focus-ring-color; outline-offset: 1px; }
+.menu-empty { margin: auto; text-align: center; color: var(--muted); max-width: 260px; }
+.menu-link { padding: 0; border: 0; background: none; font: inherit; color: -webkit-link; text-decoration: underline; cursor: pointer; }

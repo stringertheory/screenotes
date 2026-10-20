@@ -13,6 +13,10 @@ fixes still merge: `git fetch upstream && git merge upstream/main`.
 - `server/library.py`: prefers the `.png` over the page for naming and showing (`PAGE_LAST`); writes out the embedded
   PNG for a page with no PNG beside it; text search matches path, `captures` fields and notes.
 - `server/notes.py`: notes in `<data dir>/notes.sqlite`, not in the per-folder cache, which is disposable.
+- `server/menubar.py` and `web/src/Menu.tsx`: `--menubar` runs an NSStatusItem whose NSPopover holds a WKWebView of
+  `/menu`. The page sends `{action, value}` string messages through `window.webkit.messageHandlers.screenotes`;
+  `menubar.action()` validates them and opens `/?image=<id>` or `/?mode=name&q=…` in the default browser. With a
+  server already on the port, the item attaches to it.
 - `web/src/Note.tsx`: the autosaving note box. Saving a note clears the tile cache but doesn't bump the revision, so
   the grid doesn't reload under the viewer.
 
@@ -31,4 +35,5 @@ Never print screenshot contents (OCR text, window titles, URLs) from the real fo
 - Fuzzy text search: SQLite FTS5 with the trigram tokenizer over screen text, titles, URL and notes.
 - One search box: merge the text and visual rankings with reciprocal rank fusion (`1/(60 + rank)` summed).
 - Embed note text with SigLIP's text encoder, so a note matches by meaning too.
-- A menu bar item (NSStatusItem via PyObjC) listing recent screenshots, opening the viewer on click.
+- Menu bar: a global hotkey to open it, launch at login (a LaunchAgent named `local.screenotes`), and reusing one
+  browser tab instead of opening a new one per click.

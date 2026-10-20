@@ -215,8 +215,13 @@ class Library:
         query = params.get('q', '').strip()[:1000]
         reference = params.get('similar', '')
         group = params.get('group', '')
-        if (reference and not IMAGE_ID.fullmatch(reference)) or (group and not IMAGE_ID.fullmatch(group)):
+        only = params.get('id', '')
+        if any(value and not IMAGE_ID.fullmatch(value) for value in (reference, group, only)):
             raise ValueError('Choose an image from this folder.')
+        if only:
+            # One image as its grid tile, for a link to it from the menu bar.
+            where.append('f.image_id=?')
+            values.append(only)
         if group:
             where.append('coalesce(g.group_id, f.image_id)=?')
             values.append(group)

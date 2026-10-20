@@ -11,6 +11,7 @@ and map, and adds what Screenotate knows about each screenshot.
 - **Where it came from.** The viewer shows the app, window title and URL Screenotate recorded, and the screenshot is
   dated by when it was taken.
 - **Notes.** The viewer has a note box for why you took the screenshot. It saves as you type.
+- **A menu bar item.** Recent screenshots and a search, as in Screenotate's menu, opening each one in the browser.
 - **Text search.** With the search set to *Text and notes*, each word must appear in the file name, the screen text,
   the window, app or URL, or the note.
 
@@ -24,6 +25,16 @@ moves. Screenotes never changes your files.
 ./orchard ~/Documents/Screenshots            # its own window
 ./orchard ~/Documents/Screenshots --browser  # or http://127.0.0.1:4410
 ```
+
+To run it from the menu bar instead, like Screenotate:
+
+```bash
+./orchard ~/Documents/Screenshots --menubar
+```
+
+The item lists recent screenshots and searches their text and notes. Clicking one opens it in the browser, with its
+note box. Return in the search field opens the full search. If Screenotes is already running in its window, the item
+uses that copy.
 
 The first run installs the Python packages into `.venv`. Visual search downloads a ~500 MB model once, when you set
 it up; text search and notes work without it.

@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, quote, urlparse
 import urllib.request
 import webbrowser
 
-from server import photos
+from server import menubar, photos
 from server.diagnostics import LAST_ERROR, report
 from server.library import IMAGE_ID, Library
 from server.notes import Notes
@@ -502,6 +502,8 @@ def arguments(argv=None):
     # The launcher passes --window first, so a --browser after it wins.
     parser.add_argument('--window', dest='show', action='store_const', const='window', help='open in its own window')
     parser.add_argument('--browser', dest='show', action='store_const', const='browser', help='open in the browser instead')
+    parser.add_argument('--menubar', dest='show', action='store_const', const='menubar',
+                        help='run from an item in the macOS menu bar, which opens screenshots in the browser')
     return parser.parse_args(argv)
 
 
@@ -519,13 +521,21 @@ def main(argv=None):
         if error := hand_over(url, folder):
             sys.exit(error)
         print(f'{APP["name"]} is already running at {url}', flush=True)
+        if args.show == 'menubar':
+            # The item works the same on a server another launch started, like the window's.
+            become_app(APP['name'])
+            menubar.run(APP['name'], url)
+            return True
         if args.show == 'browser' or args.show == 'window' and not bring_forward(url):
             open_browser(url)
         return True
 
     if join_running():
         return
-    if args.show == 'window':
+    if args.show == 'menubar' and sys.platform != 'darwin':
+        print(f'{APP["name"]} is opening in the browser, because only macOS has the menu bar item', flush=True)
+        args.show = 'browser'
+    if args.show in ('window', 'menubar'):
         become_app(APP['name'])
     # The port stays fixed, since a second launch and the page's saved settings find the app by it.
     try:
@@ -570,6 +580,13 @@ def main(argv=None):
             app.window.run()
         except KeyboardInterrupt:
             pass
+        server.shutdown()
+        server.server_close()
+        app.close()
+        return
+    if args.show == 'menubar':
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        menubar.run(APP['name'], url)
         server.shutdown()
         server.server_close()
         app.close()

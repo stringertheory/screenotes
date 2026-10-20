@@ -137,6 +137,16 @@ class ScreenotateFolderTests(unittest.TestCase):
         self.assertIsNone(self.library.save_note(image_id, '  \n'))
         self.assertIsNone(self.library.details(image_id)['note'])
 
+    def test_one_screenshot_can_be_asked_for_by_id_as_its_tile(self):
+        self.save('one', png('red'))
+        self.save('two', png('green'))
+        self.scan()
+        rows = self.library.pictures({})['items']
+        [row] = self.library.pictures({'id': rows[1]['id']})['items']
+        self.assertEqual(row['id'], rows[1]['id'])
+        with self.assertRaises(ValueError):
+            self.library.pictures({'id': 'not-an-image'})
+
     def test_overlong_notes_are_refused(self):
         with self.assertRaises(ValueError):
             self.notes.save('a' * 64, 'x' * 10_001)
