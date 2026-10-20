@@ -90,6 +90,15 @@ export function readPreferences(): Preferences {
 export function savePreferences(preferences: Preferences) {
   try { localStorage.setItem(STORAGE, JSON.stringify(preferences)); } catch { /* Browsing remains available without storage. */ }
 }
+/** How typed searches search when nothing else says: text and notes, unless Appearance was chosen. Kept apart from the
+ *  other preferences, since finding similar images switches the mode without choosing it. */
+const SEARCH_MODE = storageKey('search.mode');
+export function readSearchMode(): SearchMode {
+  try { return localStorage.getItem(SEARCH_MODE) === 'visual' ? 'visual' : 'name'; } catch { return 'name'; }
+}
+export function saveSearchMode(mode: SearchMode) {
+  try { localStorage.setItem(SEARCH_MODE, mode); } catch { /* Kept for this session. */ }
+}
 
 export function dateLabel(date: string, full = false) {
   return new Date(date).toLocaleString(undefined, full ? { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' } : { year: 'numeric', month: 'short', day: 'numeric' });

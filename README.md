@@ -11,7 +11,7 @@ and map, and adds what Screenotate knows about each screenshot.
 - **Where it came from.** The viewer shows the app, window title and URL Screenotate recorded, and the screenshot is
   dated by when it was taken.
 - **Notes.** The viewer has a note box for why you took the screenshot. It saves as you type.
-- **A menu bar item.** Recent screenshots and a search, as in Screenotate's menu, opening each one in the browser.
+- **A menu bar item.** Recent screenshots and a search, as in Screenotate's menu, opening each one in the browser. Its settings choose whether searches are of text and notes (the default) or of appearance.
 - **Text search.** With the search set to *Text and notes*, each word must appear in the file name, the screen text,
   the window, app or URL, or the note.
 

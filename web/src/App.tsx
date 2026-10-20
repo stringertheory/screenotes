@@ -10,7 +10,7 @@ import { Progress, useRemaining } from './Progress';
 import { Activity } from './Activity';
 import { Lockup, Mark } from './Logo';
 import { FilterPanel, FolderChooser, FolderPanel, LibraryPanel, SearchMenu } from './Panels';
-import { APP_NAME, IMAGE_DRAG, defaults, filterParams, imageUrl, isFiltered, plural, post, rangeLabel, readPreferences, request, savePreferences, searchable, SET_UP, settingUp, typeLabel } from './types';
+import { APP_NAME, IMAGE_DRAG, defaults, filterParams, imageUrl, isFiltered, plural, post, rangeLabel, readPreferences, readSearchMode, request, savePreferences, saveSearchMode, searchable, SET_UP, settingUp, typeLabel } from './types';
 import type { Picture, Results, SearchMode, Status, Timeline as TimelineData, View } from './types';
 const initial = readPreferences();
 const IMAGE_ID = /^[a-f0-9]{64}$/;
@@ -45,8 +45,8 @@ export default function App() {
   const [picked, setPicked] = useState<Picture | null>(null);
   const [query, setQuery] = useState(new URLSearchParams(location.search).get('q') || '');
   const [submitted, setSubmitted] = useState(query);
-  // The menu bar's searches are of text, and ask for it with mode=name.
-  const [mode, setMode] = useState<SearchMode>(new URLSearchParams(location.search).get('mode') === 'name' ? 'name' : 'visual');
+  // A search from the menu bar says its mode; otherwise the one last chosen, text by default.
+  const [mode, setMode] = useState<SearchMode>(() => { const asked = new URLSearchParams(location.search).get('mode'); return asked === 'name' || asked === 'visual' ? asked : readSearchMode(); });
   const [status, setStatus] = useState<Status | null>(null);
   const search = status?.library?.search ?? null;
   const visualReady = !!search && searchable(search);
@@ -319,7 +319,7 @@ export default function App() {
     {panel === 'filters' && <FilterPanel filters={filters} anchor={anchor('filters')} onApply={setFilters} onClose={() => setPanel(null)} />}
     {panel === 'library' && status?.library && <LibraryPanel status={status} scanLeft={scanLeft} searchLeft={searchLeft} onSetUp={setUpSearch} shown={filtered && !searching && !loading ? total : null} narrowed={filtered || searching} anchor={anchor('library')} onClose={() => setPanel(null)} onRefresh={refreshStatus} />}
     {panel === 'folder' && status && <FolderPanel status={status} anchor={anchor('folder')} onOpened={applyStatus} onClose={() => setPanel(null)} />}
-    {panel === 'search' && status && <SearchMenu mode={effectiveMode} search={search} model={status.model} anchor={anchor('search')} onMode={next => { setMode(next); if (submitted) setAskedMode(next); }} onSetUp={() => { setMode('visual'); void setUpSearch(); }} onUpload={() => uploadRef.current?.click()} onClose={() => setPanel(null)} />}
+    {panel === 'search' && status && <SearchMenu mode={effectiveMode} search={search} model={status.model} anchor={anchor('search')} onMode={next => { setMode(next); saveSearchMode(next); if (submitted) setAskedMode(next); }} onSetUp={() => { setMode('visual'); saveSearchMode('visual'); void setUpSearch(); }} onUpload={() => uploadRef.current?.click()} onClose={() => setPanel(null)} />}
     {selected !== null && items[selected] && <Viewer items={items} index={selected} onChange={changeSelected} total={total} hasMore={more} loadingMore={loadingMore} pageError={error} rootName={folder?.name ?? ''} platform={status?.platform ?? ''} filters={filters} photos={!!folder?.photos} onClose={() => setSelected(null)} onSimilar={visualReady ? findSimilar : null} onFolder={showFolder} />}
     {picked && <Viewer items={[picked]} index={0} onChange={() => {}} total={1} hasMore={false} loadingMore={false} pageError="" rootName={folder?.name ?? ''} platform={status?.platform ?? ''} filters={filters} photos={!!folder?.photos} onClose={() => setPicked(null)} onSimilar={visualReady ? findSimilar : null} onFolder={showFolder} />}
     {carried && <img className="carried" src={imageUrl(carried.id)} alt="" style={{ left: carried.x, top: carried.y }} />}

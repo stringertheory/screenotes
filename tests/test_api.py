@@ -351,7 +351,7 @@ class LaunchTests(unittest.TestCase):
 
     def test_a_second_launch_hands_over_and_uses_the_running_window(self):
         for show, has_window, opens_browser in (('--window', True, False), ('--window', False, True), ('--browser', True, True)):
-            with self.subTest(show=show, has_window=has_window), patch('server.api.running', return_value=True), \
+            with self.subTest(show=show, has_window=has_window), patch('server.api.running', return_value=APP['version']), \
                     patch('server.api.hand_over', return_value=None) as hand_over, \
                     patch('server.api.bring_forward', return_value=has_window), patch('server.api.Window') as window:
                 self.open_browser.reset_mock()
@@ -360,11 +360,16 @@ class LaunchTests(unittest.TestCase):
                 window.assert_not_called()
                 self.assertEqual(self.open_browser.called, opens_browser)
 
+    def test_an_older_running_copy_is_not_joined(self):
+        with patch('server.api.running', return_value='0.0.1'), patch('server.api.hand_over', return_value=None), \
+                self.assertRaisesRegex(SystemExit, 'Screenotes 0.0.1 is already running.*Quit it'):
+            self.launch('--menubar')
+
     def test_a_port_in_use_or_reserved_is_explained(self):
         with Server(('127.0.0.1', 0), Handler) as taken, self.assertRaises(OSError):
             Server(('127.0.0.1', taken.server_port), Handler)
         for code, message in ((errno.EADDRINUSE, 'used by another program'), (errno.EACCES, 'reserved by the system')):
-            with self.subTest(message=message), patch('server.api.running', return_value=False), \
+            with self.subTest(message=message), patch('server.api.running', return_value=None), \
                     patch('server.api.Server', side_effect=OSError(code, 'refused')), self.assertRaisesRegex(SystemExit, message):
                 self.launch('--browser')
 

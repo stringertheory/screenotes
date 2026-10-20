@@ -15,6 +15,10 @@ class MenubarTests(unittest.TestCase):
         self.assertEqual(action({'action': 'search', 'value': ' disk full & more '}, URL),
                          ('browse', f'{URL}/?mode=name&q=disk%20full%20%26%20more'))
 
+    def test_a_search_by_appearance_keeps_its_mode(self):
+        self.assertEqual(action({'action': 'search', 'value': 'a cat', 'mode': 'visual'}, URL), ('browse', f'{URL}/?mode=visual&q=a%20cat'))
+        self.assertEqual(action({'action': 'search', 'value': 'a cat', 'mode': 'other'}, URL), ('browse', f'{URL}/?mode=name&q=a%20cat'))
+
     def test_home_and_quit(self):
         self.assertEqual(action({'action': 'home'}, URL), ('browse', URL))
         self.assertEqual(action({'action': 'quit'}, URL), ('quit', None))

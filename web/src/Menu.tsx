@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Search, Settings } from 'lucide-react';
-import type { Picture, Results, Status } from './types';
-import { APP_NAME, dateLabel, fileName, imageUrl, post, request, storageKey } from './types';
+import type { Picture, Results, SearchMode, Status } from './types';
+import { APP_NAME, dateLabel, fileName, imageUrl, post, readSearchMode, request, saveSearchMode, searchable, storageKey } from './types';
 
 const LIMITS = [5, 10, 20, 50];
 const LIMIT_KEY = storageKey('menu.limit');
@@ -15,11 +15,11 @@ declare global {
 
 /** Ask the menu bar item for something outside the page. In a browser, for working on the page, it opens the same
  *  addresses itself. */
-function send(action: 'open' | 'search' | 'home' | 'quit', value = '') {
+function send(action: 'open' | 'search' | 'home' | 'quit', value = '', mode: SearchMode = 'name') {
   const handler = window.webkit?.messageHandlers?.screenotes;
-  if (handler) { handler.postMessage({ action, value }); return; }
+  if (handler) { handler.postMessage({ action, value, mode }); return; }
   if (action === 'quit') return;
-  window.open(action === 'open' ? `/?image=${value}` : action === 'search' ? `/?mode=name&q=${encodeURIComponent(value)}` : '/', '_blank');
+  window.open(action === 'open' ? `/?image=${value}` : action === 'search' ? `/?mode=${mode}&q=${encodeURIComponent(value)}` : '/', '_blank');
 }
 
 function readLimit() {
@@ -29,6 +29,10 @@ function readLimit() {
 /** The popover the menu bar item opens: a search over screenshots' text and notes, and the most recent ones. */
 export default function Menu() {
   const [limit, setLimit] = useState(readLimit);
+  const [mode, setMode] = useState<SearchMode>(readSearchMode);
+  // Searching by appearance waits for visual search, which is set up in the app; until then searches are of text.
+  const [visualReady, setVisualReady] = useState(false);
+  const searchMode: SearchMode = visualReady ? mode : 'name';
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<Picture[]>([]);
   const [total, setTotal] = useState(0);
@@ -43,12 +47,15 @@ export default function Menu() {
       const status = await request<Status>('/api/status');
       if (asked !== latest.current) return;
       setFolder(!!status.folder);
+      const search = status.library?.search;
+      const visual = mode === 'visual' && !!search && searchable(search);
+      setVisualReady(!!search && searchable(search));
       if (!status.folder) { setItems([]); return; }
-      const data = await request<Results>(`/api/images?${new URLSearchParams({ q: text.trim(), mode: 'name', limit: String(limit) })}`);
+      const data = await request<Results>(`/api/images?${new URLSearchParams({ q: text.trim(), mode: visual ? 'visual' : 'name', limit: String(limit) })}`);
       if (asked !== latest.current) return;
       setItems(data.items); setTotal(data.total); setError('');
     } catch (e) { if (asked === latest.current) setError((e as Error).message); }
-  }, [limit]);
+  }, [limit, mode]);
   const queryRef = useRef(query);
   queryRef.current = query;
   useEffect(() => { const timer = setTimeout(() => void load(query), query ? SEARCH_DELAY : 0); return () => clearTimeout(timer); }, [query, load]);
@@ -77,25 +84,31 @@ export default function Menu() {
     return () => { window.removeEventListener('screenotes:shown', shown); dark.removeEventListener('change', theme); };
   }, [load]);
   const choose = (next: number) => { setLimit(next); setSettings(false); try { localStorage.setItem(LIMIT_KEY, String(next)); } catch { /* Kept for this session. */ } };
+  const chooseMode = (next: SearchMode) => { setMode(next); saveSearchMode(next); setSettings(false); field.current?.focus(); };
+  const radio = (checked: boolean, label: string, onClick: () => void, disabled = false) => <button role="menuitemradio" aria-checked={checked} disabled={disabled} onClick={onClick}>{checked ? <Check /> : <span className="menu-check" />}{label}</button>;
   const searching = !!query.trim();
   return <div className="menu" onKeyDown={e => { if (e.key === 'Escape' && settings) { e.stopPropagation(); setSettings(false); } }}>
     <div className="menu-top">
-      <form className="menu-search" role="search" onSubmit={e => { e.preventDefault(); if (query.trim()) send('search', query); }}>
+      <form className="menu-search" role="search" onSubmit={e => { e.preventDefault(); if (query.trim()) send('search', query, searchMode); }}>
         <Search aria-hidden="true" />
         <label className="sr-only" htmlFor="menu-search">Search all screenshots</label>
-        <input ref={field} id="menu-search" type="search" autoFocus value={query} placeholder="Search all screenshots" onChange={e => setQuery(e.target.value)} />
+        <input ref={field} id="menu-search" type="search" autoFocus value={query} placeholder={searchMode === 'visual' ? 'Describe a screenshot' : 'Search all screenshots'} onChange={e => setQuery(e.target.value)} />
       </form>
       <button className="menu-gear" aria-label="Settings" title="Settings" aria-expanded={settings} onClick={() => setSettings(!settings)}><Settings /></button>
       {settings && <div className="menu-settings" role="menu">
         <button role="menuitem" onClick={() => send('home')}>Open {APP_NAME}</button>
         <hr />
+        <p>Search by</p>
+        {radio(searchMode === 'name', 'Text and notes', () => chooseMode('name'))}
+        {radio(searchMode === 'visual', visualReady ? 'Appearance' : 'Appearance (set up visual search first)', () => chooseMode('visual'), !visualReady)}
+        <hr />
         <p>Screenshots in menu</p>
-        {LIMITS.map(value => <button key={value} role="menuitemradio" aria-checked={value === limit} onClick={() => choose(value)}>{value === limit ? <Check /> : <span className="menu-check" />}{value}</button>)}
+        {LIMITS.map(value => <Fragment key={value}>{radio(value === limit, String(value), () => choose(value))}</Fragment>)}
         <hr />
         <button role="menuitem" onClick={() => send('quit')}>Quit {APP_NAME}</button>
       </div>}
     </div>
-    <p className="menu-label">{searching ? (total > items.length ? `${items.length} of ${total.toLocaleString()} matches · Return shows all` : `${total.toLocaleString()} ${total === 1 ? 'match' : 'matches'}`) : 'Recent screenshots'}</p>
+    <p className="menu-label">{searching && searchMode === 'visual' ? 'Closest matches · Return shows all' : searching ? (total > items.length ? `${items.length} of ${total.toLocaleString()} matches · Return shows all` : `${total.toLocaleString()} ${total === 1 ? 'match' : 'matches'}`) : 'Recent screenshots'}</p>
     <div className="menu-list">
       {error ? <p className="menu-empty">{error}</p>
         : folder === false ? <p className="menu-empty">No folder is open. <button className="menu-link" onClick={() => send('home')}>Open {APP_NAME}</button> to choose one.</p>

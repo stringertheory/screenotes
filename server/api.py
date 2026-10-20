@@ -462,12 +462,13 @@ class Server(ThreadingHTTPServer):
 
 
 def running(url: str):
-    """Whether this app already answers at url."""
+    """The version of this app that already answers at url, or None."""
     try:
         with urllib.request.urlopen(f'{url}/api/status', timeout=1) as response:
-            return json.load(response).get('app') == APP['name']
+            status = json.load(response)
     except (OSError, ValueError):
-        return False
+        return None
+    return str(status.get('version')) if status.get('app') == APP['name'] else None
 
 
 def hand_over(url: str, folder: str | None):
@@ -516,8 +517,12 @@ def main(argv=None):
 
     def join_running():
         """Hand the folder to a copy of this app that already answers at url. Returns whether there was one."""
-        if not running(url):
+        version = running(url)
+        if version is None:
             return False
+        # An older server lacks what this launch's pages ask of it, like finding one screenshot for the menu bar.
+        if version != APP['version']:
+            sys.exit(f'{APP["name"]} {version} is already running at {url}. Quit it, then start {APP["name"]} {APP["version"]} again.')
         if error := hand_over(url, folder):
             sys.exit(error)
         print(f'{APP["name"]} is already running at {url}', flush=True)

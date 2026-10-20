@@ -298,7 +298,8 @@ html.menu-page[data-theme='dark'] { --menu-well: #1e1e1e; --menu-field: #2a2a2a;
 .menu-gear svg { width: 20px; height: 20px; }
 .menu-settings { position: absolute; z-index: 1; top: 34px; right: 0; min-width: 190px; padding: 5px; background: var(--menu-field); border: 1px solid var(--menu-field-line); border-radius: 8px; box-shadow: 0 6px 24px #00000030; }
 .menu-settings button { display: flex; align-items: center; gap: 6px; width: 100%; padding: 3px 8px; border: 0; border-radius: 4px; background: transparent; font: inherit; color: inherit; text-align: left; cursor: default; }
-.menu-settings button:hover { background: -webkit-focus-ring-color; color: #fff; }
+.menu-settings button:hover:not(:disabled) { background: -webkit-focus-ring-color; color: #fff; }
+.menu-settings button:disabled { color: var(--muted); }
 .menu-settings svg, .menu-check { width: 13px; height: 13px; flex: none; }
 .menu-settings p { margin: 0; padding: 3px 8px; color: var(--muted); font-size: 12px; }
 .menu-settings hr { margin: 4px 8px; border: 0; border-top: 1px solid var(--menu-field-line); }

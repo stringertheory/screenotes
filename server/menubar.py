@@ -17,8 +17,8 @@ SHOWN = "window.dispatchEvent(new Event('screenotes:shown'))"
 
 def action(message, url: str):
     """What a message from the menu page asks for, as (kind, value): ('browse', address), ('quit', None), or None
-    for a message that isn't understood. Messages are {'action': name, ...} with string values only, which cross
-    from JavaScript the same on every macOS."""
+    for a message that isn't understood. Messages are {'action': name, 'value': ..., 'mode': ...} with string values
+    only, which cross from JavaScript the same on every macOS. A search is of text unless its mode says appearance."""
     if not isinstance(message, dict):
         return None
     name, value = message.get('action'), message.get('value')
@@ -26,7 +26,8 @@ def action(message, url: str):
     if name == 'open' and IMAGE_ID.fullmatch(value):
         return 'browse', f'{url}/?image={value}'
     if name == 'search' and value:
-        return 'browse', f'{url}/?mode=name&q={quote(value[:1000])}'
+        mode = 'visual' if message.get('mode') == 'visual' else 'name'
+        return 'browse', f'{url}/?mode={mode}&q={quote(value[:1000])}'
     if name == 'home':
         return 'browse', url
     if name == 'quit':
