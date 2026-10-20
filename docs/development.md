@@ -63,6 +63,8 @@ The server takes these options:
 | `server/library.py` | One folder's library, and the queries the API answers from it. |
 | `server/cache.py` | Where a folder's cache keeps its SQLite index, thumbnails and previews. |
 | `server/scanner.py` | Finds image files, reads metadata and draws thumbnails. |
+| `server/screenotate.py` | Reads Screenotate's `.html` pages: the PNG they embed, and the URL, timestamp, window, app and screen text. |
+| `server/notes.py` | The notes on images, in `notes.sqlite` in the data folder, apart from every folder's cache. |
 | `server/photos.py` | Reads the Mac's Photos library through PhotoKit, as a source the scanner reads like a folder. |
 | `server/semantic.py` | Downloads and runs SigLIP 2 with ONNX Runtime, and stores each folder's vectors. |
 | `server/groups.py` | Groups near-duplicates. |
@@ -71,7 +73,7 @@ The server takes these options:
 | `server/diagnostics.py` | The report that Copy diagnostics in Info copies, without file names or folders. |
 | `server/updates.py` | The opt-in daily check for a newer release on GitHub. |
 | `server/parity-vector.npy` | The vector the CPU gives for the test image that a GPU must match. |
-| `web/src/` | The React frontend. `App.tsx` is the entry point, and `mapEngine.ts` draws the map. |
+| `web/src/` | The React frontend. `App.tsx` is the entry point, `mapEngine.ts` draws the map, and `Note.tsx` is the viewer's note box. |
 | `dist/` | The built page. |
 | `tests/` | Python tests, one file per server module. `tests/ui/` holds the Playwright test of the page. |
 | `orchard`, `orchard.cmd` | The launchers for macOS and Linux, and for Windows. They find a supported Python, install the packages, and start the server with `--window`. |

@@ -9,7 +9,10 @@ export interface Filters { folder: string; type: string; range: Range; from: str
  *  In the grid it fronts its `group` of near-duplicates, `members` images in all, counting itself. */
 export interface Picture { id: string; width: number; height: number; mime: string; size: number; date: string; dated: 'taken' | 'modified'; path: string; copies: number; group: string; members: number }
 interface FileCopy { path: string; modified: string }
-export interface Details { id: string; width: number; height: number; mime: string; size: number; taken: string | null; camera: string | null; root: string; source: 'folder' | 'photos'; files: FileCopy[]; preview: boolean }
+/** What Screenotate kept about a screenshot: where it came from, and the text it read off the screen. */
+export interface Capture { url: string | null; captured: string | null; window: string | null; app: string | null; text: string | null }
+export interface Note { text: string; created: string; updated: string }
+export interface Details { id: string; width: number; height: number; mime: string; size: number; taken: string | null; camera: string | null; root: string; source: 'folder' | 'photos'; files: FileCopy[]; preview: boolean; capture: Capture | null; note: Note | null }
 /** `received` and `size` are bytes, sent while the model downloads. */
 export interface SearchStatus { state: 'idle' | 'downloading' | 'loading' | 'indexing' | 'ready' | 'error'; indexed: number; total: number; downloaded: boolean; received?: number; size?: number; error?: string }
 /** Visual queries can be answered: some images are prepared. */

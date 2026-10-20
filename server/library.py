@@ -9,11 +9,12 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from PIL import Image
 
-from server import photos
+from server import photos, screenotate
 from server.atlas import Atlas
-from server.cache import connect, preview_path, thumbnail_path, while_open
+from server.cache import connect, extracted_path, preview_path, thumbnail_path, while_open
 from server.groups import Groups
 from server.layout import Layout
+from server.notes import Notes
 from server.scanner import FolderUnavailable, ScanCancelled, Scanner, scaled
 from server.semantic import SemanticIndex
 
@@ -26,6 +27,11 @@ MAP_LIMIT = 25_000
 # Browsers show these directly. Anything else is viewed as a converted JPEG.
 WEB_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/bmp'}
 PREVIEW_EDGE = 4096
+# Text search reads each image's file names, Screenotate's details and its note.
+CAPTURE_TEXT = ("coalesce((SELECT coalesce(c.text,'')||' '||coalesce(c.window,'')||' '||coalesce(c.app,'')||' '||"
+                "coalesce(c.url,'') FROM captures c WHERE c.image_id=f.image_id),'')")
+# Of a screenshot's PNG and the Screenotate page that embeds it, the PNG is the file to show and name.
+PAGE_LAST = "f.path LIKE '%.html'"
 # The most a viewer's time zone can be from UTC, in minutes.
 MAX_OFFSET = 1440
 logger = logging.getLogger(__name__)
@@ -40,9 +46,10 @@ def utc_offset(params) -> int:
 
 
 class Library:
-    def __init__(self, folder: Path, directory: Path, encoder):
+    def __init__(self, folder: Path, directory: Path, encoder, notes: Notes | None = None):
         self.folder = Path(folder)
         self.directory = Path(directory)
+        self.notes = notes or Notes(self.directory / 'notes.sqlite')
         self.photos = photos.is_library(self.folder)
         self.scanner = Scanner(self.folder, self.directory, photos.PhotosLibrary(self.directory) if self.photos else None)
         self.semantic = SemanticIndex(self.directory, encoder)
@@ -180,7 +187,7 @@ class Library:
         matching = f'''WITH matching AS (
             SELECT f.path, f.image_id, f.modified, coalesce(i.taken, f.modified) AS date,
                    coalesce(g.group_id, f.image_id) AS grp, coalesce(g.score, 0) AS score,
-                   row_number() OVER (PARTITION BY f.image_id ORDER BY coalesce(i.taken, f.modified) DESC, f.path) AS rank,
+                   row_number() OVER (PARTITION BY f.image_id ORDER BY coalesce(i.taken, f.modified) DESC, {PAGE_LAST}, f.path) AS rank,
                    count(*) OVER (PARTITION BY f.image_id) AS copies
             FROM files f JOIN images i ON i.id=f.image_id LEFT JOIN image_groups g ON g.image_id=f.image_id WHERE {condition}
         ), pictures AS (
@@ -220,8 +227,10 @@ class Library:
         visual = bool(image_bytes or reference or (query and params.get('mode') == 'visual'))
         if not visual:
             for word in query.split():
-                where.append("f.path LIKE ? ESCAPE '\\'")
-                values.append('%' + word.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%')
+                pattern = '%' + word.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+                where.append(f"(f.path LIKE ? ESCAPE '\\' OR {CAPTURE_TEXT} LIKE ? ESCAPE '\\' "
+                             "OR f.image_id IN (SELECT value FROM json_each(?)))")
+                values += [pattern, pattern, json.dumps(self.notes.matching(word))]
             rows = self.tiles(where, values)
         else:
             self.require_search()
@@ -275,8 +284,18 @@ class Library:
                 return None
             files = [dict(row) for row in db.execute(
                 'SELECT path, modified FROM files WHERE image_id=? ORDER BY modified DESC, path', (image_id,))]
+            capture = db.execute('SELECT url, captured, window, app, text FROM captures WHERE image_id=?', (image_id,)).fetchone()
         return {**dict(image), 'root': photos.NAME if self.photos else str(self.folder), 'source': 'photos' if self.photos else 'folder',
-                'files': files, 'preview': image['mime'] not in WEB_TYPES}
+                'files': files, 'preview': image['mime'] not in WEB_TYPES, 'capture': dict(capture) if capture else None,
+                'note': self.notes.get(image_id)}
+
+    def save_note(self, image_id, text):
+        note = self.notes.save(image_id, text)
+        # Text search reads notes, so the grid's tiles are read again. The revision stays, so open pages aren't
+        # refreshed under the note being written.
+        with self._tiles_lock:
+            self._tiles = None
+        return note
 
     def path(self, image_id, relative=None):
         """An image's path in the folder: the named copy if given and it holds this image, else the first."""
@@ -284,20 +303,34 @@ class Library:
             if relative is not None:
                 row = db.execute('SELECT path FROM files WHERE image_id=? AND path=?', (image_id, relative)).fetchone()
             else:
-                row = db.execute('SELECT path FROM files WHERE image_id=? ORDER BY path LIMIT 1', (image_id,)).fetchone()
+                row = db.execute(f'SELECT path FROM files f WHERE image_id=? ORDER BY {PAGE_LAST}, path LIMIT 1', (image_id,)).fetchone()
         return row['path'] if row else None
 
-    def original(self, image_id, relative=None):
+    def original(self, image_id, relative=None, image=True):
         """The file on disk for an image, as path() picks it. A photo in Photos is written out first, and is None if
-        Photos can't provide it."""
+        Photos can't provide it. A Screenotate page is the screenshot it embeds, unless `image` is False."""
         path = self.path(image_id, relative)
         if path is None:
             return None
         try:
-            return self.scanner.source.file(path)
+            file = self.scanner.source.file(path)
+            return self.extracted(image_id, file) if image and path.lower().endswith('.html') else file
         except OSError as error:
             logger.info('Could not read %s: %s', path, error)
             return None
+
+    def extracted(self, image_id, page: Path):
+        """The PNG a Screenotate page embeds, written out once and kept."""
+        target = extracted_path(self.directory, image_id)
+        if not target.is_file():
+            capture = screenotate.parse(page.read_bytes())
+            if capture is None:
+                return None
+            target.parent.mkdir(exist_ok=True)
+            temporary = target.with_suffix(f'.{threading.get_ident()}.tmp')
+            temporary.write_bytes(capture['png'])
+            while_open(temporary.replace, target)
+        return target
 
     def thumbnail(self, image_id):
         return thumbnail_path(self.directory, image_id)

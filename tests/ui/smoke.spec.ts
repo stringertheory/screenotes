@@ -68,7 +68,7 @@ test('opens a folder and browses, filters, maps and searches it', async ({ page 
   });
 
   await test.step('typed searches match file names', async () => {
-    await expect(page.getByRole('textbox', { name: 'Search images' })).toHaveAttribute('placeholder', 'Search file names');
+    await expect(page.getByRole('textbox', { name: 'Search images' })).toHaveAttribute('placeholder', 'Search text and notes');
     await page.getByRole('textbox', { name: 'Search images' }).fill('beach');
     await page.keyboard.press('Enter');
     await expect(meta).toHaveText(plural(1, 'match', 'matches'));

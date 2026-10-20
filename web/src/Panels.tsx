@@ -245,7 +245,7 @@ export function SearchMenu({ mode, search, model, anchor, onMode, onSetUp, onUpl
         <button className="text-button menu-item" aria-pressed={false} aria-describedby="appearance-note" disabled={busy} onClick={() => { onSetUp(); onClose(); }}><Check />Appearance</button>
         <div className="menu-note" id="appearance-note">{busy ? 'Getting ready. Progress shows under the search bar.' : search?.state === 'error' ? 'The last try failed. Choose it to try again.' : `Sets up visual search: a ${megabytes(model.size)} MB download, once.`}</div>
       </>}
-      {option('name', 'File name')}
+      {option('name', 'Text and notes')}
     </div>
     <hr className="menu-rule" />
     <button className="text-button menu-item" disabled={!ready} onClick={() => { onClose(); onUpload(); }}><ImageIcon />Find images like a file…</button>

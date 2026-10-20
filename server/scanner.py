@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 import errno
 import hashlib
+import io
 import logging
 import os
 from pathlib import Path
@@ -17,7 +18,8 @@ import warnings
 
 from PIL import ExifTags, Image, ImageOps, UnidentifiedImageError
 
-from server.cache import connect, preview_path, thumbnail_path, while_open
+from server import screenotate
+from server.cache import connect, extracted_path, preview_path, thumbnail_path, while_open
 
 try:
     from pillow_heif import register_heif_opener
@@ -105,7 +107,7 @@ def walk(root: Path, skip=frozenset(), found=None):
                             (links if entry.is_symlink() else stack).append((child, entry.path))
                         elif entry.is_file():
                             extension = os.path.splitext(entry.name)[1].lower()
-                            if extension in EXTENSIONS:
+                            if extension in EXTENSIONS or (extension == '.html' and is_capture(entry.path)):
                                 files.append((child, entry.stat()))
                                 if found and len(files) % FOUND_EVERY == 0:
                                     found(len(files))
@@ -118,6 +120,15 @@ def walk(root: Path, skip=frozenset(), found=None):
                 raise blocked(root) from None
             unreadable.append(relative)
     return files, unreadable, libraries, skipped
+
+
+def is_capture(path: str) -> bool:
+    """Whether an .html file is a page Screenotate saved, which holds a screenshot."""
+    try:
+        with open(path, 'rb') as stream:
+            return screenotate.is_capture(stream.read(screenotate.HEAD_BYTES))
+    except OSError:
+        return False
 
 
 class Folder:
@@ -267,6 +278,9 @@ class Scanner:
                     path TEXT PRIMARY KEY, folder TEXT NOT NULL, image_id TEXT REFERENCES images(id),
                     size INTEGER NOT NULL, mtime_ns INTEGER NOT NULL, modified TEXT NOT NULL, error TEXT
                 );
+                CREATE TABLE IF NOT EXISTS captures (
+                    image_id TEXT PRIMARY KEY, url TEXT, captured TEXT, window TEXT, app TEXT, text TEXT
+                );
                 CREATE INDEX IF NOT EXISTS file_image ON files(image_id);
                 CREATE INDEX IF NOT EXISTS file_folder ON files(folder);
             ''')
@@ -297,7 +311,14 @@ class Scanner:
                         if 'width' in result:
                             db.execute('INSERT OR IGNORE INTO images VALUES (?,?,?,?,?,?,?)',
                                        (result['id'], result['width'], result['height'], result['mime'],
-                                        size, result['taken'], result['camera']))
+                                        result.get('bytes', size), result['taken'], result['camera']))
+                        if capture := result.get('capture'):
+                            db.execute('INSERT OR REPLACE INTO captures VALUES (?,?,?,?,?,?)',
+                                       (result['id'], capture['url'], capture['captured'], capture['window'],
+                                        capture['app'], capture['text']))
+                            # The PNG Screenotate saves beside the page has no date of its own, and may be read first.
+                            db.execute('UPDATE images SET taken=coalesce(taken, ?) WHERE id=?',
+                                       (capture['captured'], result['id']))
                         modified = utc(datetime.fromtimestamp(mtime_ns / 1e9, UTC))
                         db.execute('INSERT OR REPLACE INTO files VALUES (?,?,?,?,?,?,?)',
                                    (path, folder, result.get('id') if 'error' not in result else None,
@@ -328,6 +349,8 @@ class Scanner:
         try:
             if size == 0:
                 return {'error': 'Empty file'}
+            if relative.lower().endswith('.html'):
+                return self._capture(relative)
             with self.source.open(relative) as stream:
                 digest = hashlib.file_digest(stream, 'sha256').hexdigest()
                 if digest in self._seen:
@@ -337,6 +360,20 @@ class Scanner:
         except Exception as error:
             logger.info('Could not read %s: %s', relative, error)
             return {'error': failure(error)}
+
+    def _capture(self, relative: str) -> dict:
+        """A Screenotate page as the screenshot it embeds, which shares its image with the PNG saved beside it, and
+        the details Screenotate kept."""
+        with self.source.open(relative) as stream:
+            capture = screenotate.parse(stream.read())
+        if capture is None:
+            return {'error': 'Not a readable image'}
+        png = capture.pop('png')
+        digest = hashlib.sha256(png).hexdigest()
+        if digest in self._seen:
+            return {'id': digest, 'capture': capture}
+        described = self._describe(io.BytesIO(png), digest)
+        return {**described, 'taken': described['taken'] or capture['captured'], 'bytes': len(png), 'capture': capture}
 
     def _describe(self, stream, digest: str) -> dict:
         """Read a new image's metadata and draw its thumbnail."""
@@ -366,7 +403,9 @@ class Scanner:
             orphans = [image_id for (image_id,) in db.execute(
                 'SELECT id FROM images WHERE id NOT IN (SELECT image_id FROM files WHERE image_id IS NOT NULL)')]
             db.executemany('DELETE FROM images WHERE id=?', [(image_id,) for image_id in orphans])
+            db.executemany('DELETE FROM captures WHERE image_id=?', [(image_id,) for image_id in orphans])
         for image_id in orphans:
-            for path in (thumbnail_path(self.directory, image_id), preview_path(self.directory, image_id)):
+            for path in (thumbnail_path(self.directory, image_id), preview_path(self.directory, image_id),
+                         extracted_path(self.directory, image_id)):
                 while_open(path.unlink, missing_ok=True)
         return len(gone)

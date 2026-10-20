@@ -1,7 +1,7 @@
 {
-  "name": "Orchard",
-  "slug": "orchard",
+  "name": "Screenotes",
+  "slug": "screenotes",
   "version": "0.2.0",
-  "port": 4400,
-  "devPort": 5173
+  "port": 4410,
+  "devPort": 5183
 }

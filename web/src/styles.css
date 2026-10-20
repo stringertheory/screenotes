@@ -184,6 +184,16 @@ main[data-timeline] .gallery { margin-right: calc(var(--page) + var(--timeline))
 .folder-button { max-width: 40%; margin-left: auto; gap: var(--s2); color: var(--muted); }
 .folder-button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .numbers { font-variant-numeric: tabular-nums; }
+.capture-source { color: var(--ink); overflow-wrap: anywhere; }
+.capture-url { color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.capture-url:hover { color: var(--ink); }
+.note { margin-top: var(--s4); }
+.note textarea { display: block; width: 100%; min-height: 96px; resize: vertical; font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: var(--control-radius); padding: var(--s2) var(--s3); transition: border-color var(--motion) var(--ease); }
+.note textarea:hover { border-color: var(--muted); }
+.note textarea::placeholder { color: var(--muted); }
+.note-status { min-height: 1.5em; margin-top: var(--s1) !important; }
+.note-placeholder { margin-top: var(--s4); min-height: calc(96px + 1.5em + var(--s1)); }
+.screen-text { margin: var(--s2) 0 0; font: inherit; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40vh; overflow: auto; }
 .near-duplicates { margin-top: var(--s4); }
 .near-duplicates h2 { margin: 0 0 var(--s3); font-size: inherit; font-weight: 400; color: var(--muted); }
 .near-duplicates ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--s12), 1fr)); gap: var(--s2); max-height: 40vh; overflow: auto; }

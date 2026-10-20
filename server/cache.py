@@ -34,6 +34,11 @@ def preview_path(directory: Path, image_id: str) -> Path:
     return Path(directory) / 'previews' / f'{image_id}.jpg'
 
 
+def extracted_path(directory: Path, image_id: str) -> Path:
+    """A screenshot written out of the Screenotate page that embeds it, for one with no PNG beside it."""
+    return Path(directory) / 'previews' / f'{image_id}.png'
+
+
 def while_open(change, *args, **options):
     """Replace or delete a file, waiting briefly on Windows for any thread still reading it to finish."""
     for attempt in range(OPEN_FILE_TRIES):

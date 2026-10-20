@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Copy, Download, FolderOpen, Images, ScanSearch, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { Details, Filters, Picture, Results } from './types';
+import NoteEditor from './Note';
 import { Disclosure } from './Panels';
 import { dateLabel, downloadUrl, fileName, filterParams, folderOf, imageUrl, plural, post, request, sizeLabel, typeLabel } from './types';
 
@@ -68,6 +69,7 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
       setCopied({ id, note: scaled ? `Copied at ${width.toLocaleString()} × ${height.toLocaleString()}, the most the clipboard takes` : 'Copied' });
     } catch (e) { setError((e as Error).name === 'NotAllowedError' ? 'This browser blocked the clipboard. Download the image instead.' : 'The image could not be copied. Download it instead.'); }
   };
+  const capture = details?.capture;
   const file = details?.files.find(f => f.path === item.path);
   const others = details?.files.filter(f => f.path !== item.path) ?? [];
   // The date not already shown under the name.
@@ -100,7 +102,10 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
           <button className="crumbs" title={`${folder || rootName}. Show only this folder`} onClick={() => onFolder(folder)}>{crumbs}</button>
           <p className="numbers">{item.width.toLocaleString()} × {item.height.toLocaleString()} · {sizeLabel(item.size)} · {typeLabel(item.mime)}</p>
           {details?.preview && <p>Shown as a converted preview. Download for the original {typeLabel(item.mime)}.</p>}
+          {capture && <p className="capture-source">{[capture.app, capture.window].filter(Boolean).join(' · ')}</p>}
+          {capture?.url && <a className="capture-url" href={capture.url} target="_blank" rel="noreferrer" title={capture.url}>{capture.url}</a>}
         </div>
+        {details ? <NoteEditor key={item.id} id={item.id} note={details.note} /> : <div className="note-placeholder" />}
         <div className="detail-actions">
           {onSimilar && <button className="text-button" onClick={() => onSimilar(item.id)}><ScanSearch />Find similar</button>}
           <button className="text-button" onClick={copy}>{copied?.id === item.id ? <Check /> : <Copy />}Copy image</button>
@@ -112,6 +117,7 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
           <h2>{plural(members.length, 'near-duplicate')}</h2>
           <ul>{members.map((member, place) => <li key={member.id}><button aria-pressed={place === shown} aria-label={`Show ${fileName(member.path)}`} title={member.path} onClick={() => setShown(place)}><img src={imageUrl(member.id)} alt="" decoding="async" /></button></li>)}</ul>
         </section>}
+        {capture?.text && <Disclosure summary="Screen text"><pre className="screen-text">{capture.text}</pre></Disclosure>}
         {details && <Disclosure summary="Details">
           <p className="path">{photos ? `In your ${details.root} library` : `${details.root}/${item.path}`}</p>
           {otherDate && <p>{otherDate}</p>}

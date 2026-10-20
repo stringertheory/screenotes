@@ -21,6 +21,7 @@ import webbrowser
 from server import photos
 from server.diagnostics import LAST_ERROR, report
 from server.library import IMAGE_ID, Library
+from server.notes import Notes
 from server.semantic import Encoder
 from server.updates import Updates
 from server.window import Window, become_app, unavailable
@@ -75,6 +76,7 @@ class App:
         self.data_dir = Path(data_dir).resolve()
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.encoder = Encoder(self.data_dir / 'models')
+        self.notes = Notes(self.data_dir / 'notes.sqlite')
         self.recent_path = self.data_dir / 'recent.json'
         self.updates = Updates(self.data_dir / 'updates.json', APP['version'], f'{APP["name"]}/{APP["version"]}')
         self.library: Library | None = None
@@ -122,7 +124,7 @@ class App:
             if self.library:
                 self.library.close()
             key = hashlib.sha256(str(folder).encode()).hexdigest()[:16]
-            library = self.library = Library(folder, self.data_dir / 'libraries' / key, self.encoder)
+            library = self.library = Library(folder, self.data_dir / 'libraries' / key, self.encoder, self.notes)
             self.remember(folder)
         threading.Thread(target=library.scan, daemon=True).start()
         return library
@@ -421,11 +423,13 @@ class Handler(BaseHTTPRequestHandler):
                 photos.show(library.path(image_id, self.form().get('path')) or '')
                 self.json({'revealed': True})
                 return
-            path = library.original(image_id, self.form().get('path'))
+            path = library.original(image_id, self.form().get('path'), image=False)
             if not path or not path.exists():
                 raise ValueError('This file is no longer there. Rescan to refresh.')
             reveal(path)
             self.json({'revealed': True})
+        elif action == 'note' and post:
+            self.json({'note': library.save_note(image_id, self.form().get('text', ''))})
         elif action == 'display' and not post:
             path = library.display(image_id)
             self.file(path, mime=details['mime'] if not details['preview'] else 'image/jpeg')
