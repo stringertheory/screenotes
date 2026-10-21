@@ -146,6 +146,29 @@ class ScreenotateFolderTests(unittest.TestCase):
         self.assertIsNone(self.library.save_annotation(image_id, '')['box'])
         self.assertEqual(sorted(path.name for path in self.folder.iterdir()), ['Shot.html', 'Shot.png'])
 
+    def test_tiles_say_which_images_have_a_drawing_saved_here_or_found_by_a_scan(self):
+        self.save('One', png('red'))
+        self.save('Two', png('green'))
+        self.scan()
+
+        def tiles():
+            return {row['path']: row['drawn'] for row in self.library.pictures({})['items']}
+
+        self.assertEqual(tiles(), {'One.html': False, 'Two.html': False})
+        one = self.ids('One')[0]
+        self.library.save_annotation(one, drawing())
+        self.assertEqual(tiles(), {'One.html': True, 'Two.html': False})
+        # Drawn outside the app, or not by Excalidraw.
+        (self.folder / 'Two.svg').write_text(drawing())
+        self.library.save_annotation(one, '')
+        self.assertEqual(tiles(), {'One.html': False, 'Two.html': False})
+        # The library's scan, which reads notes and drawings again after the scanner's.
+        self.library.scan()
+        self.assertEqual(tiles(), {'One.html': False, 'Two.html': True})
+        (self.folder / 'Two.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg"></svg>')
+        self.library.scan()
+        self.assertEqual(tiles(), {'One.html': False, 'Two.html': False})
+
     def test_a_note_is_a_text_file_beside_the_screenshot_and_blank_removes_it(self):
         image = self.save('Screenshot C', png())
         (self.folder / 'Screenshot C.png').write_bytes(image)

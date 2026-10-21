@@ -34,7 +34,7 @@ LARGEST = 1_000_000
 # The built scripts, which Vite names by hash. Libraries in them can be large, and some hold a tiny image of their own,
 # as pica holds a JPEG to test how the browser reads EXIF; anything the size of a screenshot is still refused.
 BUILT = re.compile(r'dist/assets/[^/]+\.js')
-BUILT_LARGEST = 3_000_000
+BUILT_LARGEST = 5_000_000
 BUILT_EMBEDDED_LARGEST = 2_000
 
 

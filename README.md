@@ -19,7 +19,8 @@ In the menu bar, the window and the browser tab, the app is called **Screenshots
   and URL it came from, the text Screenotate read from it, and your note.
 - **Write notes.** Each screenshot has a note box. Notes are saved as you type, and searching finds them too.
 - **Draw on them.** Draw on it opens the screenshot in [Excalidraw](https://excalidraw.com): arrows, boxes, text,
-  pasted images. The drawing shows over the screenshot from then on.
+  pasted images. The drawing shows over the screenshot from then on, and the eye button (or D) hides it. Screenshots
+  with a drawing have a pen badge in the grid and the menu, as those with a note have a note badge.
 - **Search by text.** Type a few words. A screenshot matches when every word appears somewhere in its screen text,
   window title, app, URL, file name or note.
 - **Search by appearance.** Optionally, describe what a screenshot looked like ("a bar chart", "a map"), or find

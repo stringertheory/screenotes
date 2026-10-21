@@ -7,7 +7,7 @@ export type Range = 'all' | 'today' | '7d' | '28d' | 'year' | 'custom';
 export interface Filters { folder: string; type: string; range: Range; from: string; to: string }
 /** One image, described by its newest file that passes the filters. `dated` says where its date came from.
  *  In the grid it fronts its `group` of near-duplicates, `members` images in all, counting itself. */
-export interface Picture { id: string; width: number; height: number; mime: string; size: number; date: string; dated: 'taken' | 'modified'; path: string; copies: number; group: string; members: number; note?: string | null }
+export interface Picture { id: string; width: number; height: number; mime: string; size: number; date: string; dated: 'taken' | 'modified'; path: string; copies: number; group: string; members: number; note?: string | null; drawn?: boolean }
 /** A tile's tooltip: its file, then its note, cut short if long. */
 export const tileTitle = (item: Picture, heading: string) => item.note ? `${heading}\n\n${item.note.length > 400 ? `${item.note.slice(0, 400).trimEnd()}…` : item.note}` : heading;
 interface FileCopy { path: string; modified: string }

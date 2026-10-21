@@ -59,6 +59,8 @@ class Library:
         self.scanner = Scanner(self.folder, self.directory, photos.PhotosLibrary(self.directory) if self.photos else None)
         # Each image's note text, for search. The note files are the notes; this is read again after every scan.
         self.notes = {}
+        # The images with a drawing beside them, for the tiles' badges. Read with the notes.
+        self.drawn = frozenset()
         self.semantic = SemanticIndex(self.directory, encoder)
         self.atlas = Atlas(self.directory)
         self.layout = Layout(self.semantic)
@@ -262,8 +264,8 @@ class Library:
     def marked(self, rows) -> list[dict]:
         """Tiles as sent, each with its image's note text, or None, for the tile's badge and tooltip. Added as sent
         rather than kept in the tile cache, since a note changes without the folder changing."""
-        notes = self.notes
-        return [{**dict(row), 'note': notes.get(row['id'])} for row in rows]
+        notes, drawn = self.notes, self.drawn
+        return [{**dict(row), 'note': notes.get(row['id']), 'drawn': row['id'] in drawn} for row in rows]
 
     def timeline(self, params):
         """How many tiles the date-ordered grid shows in each month, newest first, in the viewer's time zone: the
@@ -385,20 +387,25 @@ class Library:
         if place is None:
             raise ValueError('Choose an image from this folder.')
         annotations.write(place[0], svg)
-        return self.annotation(image_id)
+        annotation = self.annotation(image_id)
+        # Replaced whole, as the notes are.
+        self.drawn = self.drawn | {image_id} if annotation['box'] else self.drawn - {image_id}
+        return annotation
 
     def read_notes(self):
-        """Read every note beside the folder's images into the search index."""
+        """Read every note beside the folder's images into the search index, and see which images have a drawing."""
         if self.photos:
             return
-        found = {}
+        found, drawn = {}, set()
         with connect(self.directory, rows=True) as db:
             rows = db.execute('SELECT path, image_id FROM files WHERE image_id IS NOT NULL').fetchall()
-        # A png and its page share one note file, so each is read once.
+        # A png and its page share one note file and one drawing, so each is read once.
         for path, image_id in dict.fromkeys((notes.note_path(self.folder, row['path']), row['image_id']) for row in rows):
             if (text := notes.read(path)) is not None:
                 found[image_id] = f'{found[image_id]}\n{text}' if image_id in found else text
-        self.notes = found
+            if image_id not in drawn and annotations.box(path.with_suffix(annotations.SUFFIX)):
+                drawn.add(image_id)
+        self.notes, self.drawn = found, frozenset(drawn)
 
     def noted(self, word: str) -> list[str]:
         """The images whose note contains the word, ignoring case."""

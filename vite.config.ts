@@ -34,6 +34,21 @@ function excalidrawFonts(): Plugin {
 
 export default defineConfig({
   plugins: [react(), excalidrawFonts(), { name: 'app-name', transformIndexHtml: html => html.replace('%APP_NAME%', app.name) }],
+  // The libraries the app shares with Excalidraw, Excalidraw itself, and the app's drawing page each get a chunk of
+  // their own.
+  // Otherwise Excalidraw's hundred or so chunks import from the app's chunks, and every change to the app renames
+  // them all in the committed dist/.
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: id => id.endsWith('/web/src/Annotate.tsx') ? 'annotate'
+          : id.includes('/web/src/') || id.endsWith('/app.json') ? 'app'
+          : /\/@excalidraw\/excalidraw\/dist\/prod\/(index|chunk-[^/]+)\.js$/.test(id) ? 'excalidraw'
+          // Rollup's and Vite's helpers, such as the one that loads lazy chunks, which every chunk shares.
+          : ['\0vite/preload-helper.js', '\0commonjsHelpers.js'].includes(id) || /\/node_modules\/(react|react-dom|scheduler|lucide-react)\//.test(id) ? 'vendor' : undefined,
+      },
+    },
+  },
   server: {
     port: app.devPort,
     strictPort: true,

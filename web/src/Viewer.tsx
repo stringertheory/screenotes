@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Copy, Download, FolderOpen, Images, PenLine, ScanSearch, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Copy, Download, Eye, EyeOff, FolderOpen, Images, PenLine, ScanSearch, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { Annotation, Details, Filters, Picture, Results } from './types';
 import NoteEditor from './Note';
 import { Disclosure } from './Panels';
@@ -14,13 +14,15 @@ interface Props {
   onChange: (index: number) => void; onClose: () => void; onSimilar: ((id: string) => void) | null; onFolder: (folder: string) => void;
   /** A note was saved, so the grid's tile can show it. */
   onNote: (id: string, note: string | null) => void;
+  /** A drawing was saved or cleared, so the grid's tile can show it. */
+  onDrawing: (id: string, drawn: boolean) => void;
 }
 // The deepest folders name a place; the rest of a long path is in the tooltip and under Details.
 const CRUMBS = 3;
 // Browsers refuse canvases much larger than this.
 const CLIPBOARD_PIXELS = 50_000_000;
 
-export default function Viewer({ items, index, total, hasMore, loadingMore, pageError, rootName, platform, filters, photos, onChange, onClose, onSimilar, onFolder, onNote }: Props) {
+export default function Viewer({ items, index, total, hasMore, loadingMore, pageError, rootName, platform, filters, photos, onChange, onClose, onSimilar, onFolder, onNote, onDrawing }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [details, setDetails] = useState<Details | null>(null);
   const [error, setError] = useState('');
@@ -29,6 +31,8 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
   const [copied, setCopied] = useState<{ id: string; note: string } | null>(null);
   // The grid shows one image per group of near-duplicates; the viewer can show any of them.
   const [drawing, setDrawing] = useState(false);
+  // Whether drawings show over their screenshots. Kept while stepping through images.
+  const [overlay, setOverlay] = useState(true);
   const [members, setMembers] = useState<Picture[]>([]);
   const [shown, setShown] = useState(0);
   const front = items[index];
@@ -66,7 +70,11 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
   }, [front.id, front.group, front.members, filters]);
   const itemId = item.id;
   const saved = useCallback((note: string | null) => onNote(itemId, note), [onNote, itemId]);
-  const drawn = (annotation: Annotation) => setDetails(current => current && current.id === itemId ? { ...current, annotation } : current);
+  const drawn = (annotation: Annotation) => {
+    setDetails(current => current && current.id === itemId ? { ...current, annotation } : current);
+    onDrawing(itemId, !!annotation.box);
+    setOverlay(true);
+  };
   const annotation = details?.annotation;
   const show = async (path: string) => { setError(''); try { await post(`/api/images/${item.id}/reveal`, { path }); } catch (e) { setError((e as Error).message); } };
   const copy = async () => {
@@ -93,6 +101,7 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
     if (e.key === 'ArrowDown' && shown < members.length - 1) { e.preventDefault(); setShown(shown + 1); }
     if (e.key === 'ArrowUp' && shown > 0) { e.preventDefault(); setShown(shown - 1); }
     if ((e.metaKey || e.ctrlKey) && e.key === 'c' && !getSelection()?.toString()) { e.preventDefault(); void copy(); }
+    if (e.key === 'd' && !e.metaKey && !e.ctrlKey && !e.altKey && annotation?.box) { e.preventDefault(); setOverlay(!overlay); }
   }}>
     <div className="viewer-layout">
       <header className="viewer-top"><div className="viewer-navigation">
@@ -100,12 +109,13 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
         <span>{(index + 1).toLocaleString()} / {total.toLocaleString()}</span>
         <button className="icon-button" aria-label="Next image" title="Next image" disabled={loadingMore || (index === items.length - 1 && !hasMore)} onClick={() => onChange(index + 1)}><ArrowRight /></button>
       </div><div className="viewer-navigation">
+        {annotation?.box && <button className="icon-button" aria-label={overlay ? 'Hide drawing' : 'Show drawing'} title={overlay ? 'Hide drawing (D)' : 'Show drawing (D)'} onClick={() => setOverlay(!overlay)}>{overlay ? <Eye /> : <EyeOff />}</button>}
         <button className="icon-button" aria-label={zoom ? 'Fit to screen' : 'View actual size'} title={zoom ? 'Fit to screen' : 'Actual size'} onClick={() => setZoom(!zoom)}>{zoom ? <ZoomOut /> : <ZoomIn />}</button>
         <button className="icon-button" aria-label="Close image" title="Close" onClick={onClose}><X /></button>
       </div></header>
       <div className={`image-stage ${zoom ? 'zoomed' : ''}`}>
         {failed ? <div className="empty"><p>This image could not be shown. The file may have moved or changed.</p><button className="text-button secondary" onClick={() => setFailed(false)}>Retry</button></div>
-          : annotation?.box ? <Drawn id={item.id} width={item.width} height={item.height} annotation={annotation} label={fileName(item.path)} onError={() => setFailed(true)} onClick={() => setZoom(!zoom)} />
+          : overlay && annotation?.box ? <Drawn id={item.id} width={item.width} height={item.height} annotation={annotation} label={fileName(item.path)} onError={() => setFailed(true)} onClick={() => setZoom(!zoom)} />
           : <img key={item.id} src={imageUrl(item.id, 'display')} alt={fileName(item.path)} onError={() => setFailed(true)} onClick={() => setZoom(!zoom)} />}
       </div>
       <aside className="image-details">

@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { Check, Search, Settings, StickyNote } from 'lucide-react';
+import { Check, PenLine, Search, Settings, StickyNote } from 'lucide-react';
 import type { Picture, Results, SearchMode, Status } from './types';
 import { APP_NAME, dateLabel, fileName, imageUrl, post, readSearchMode, request, saveSearchMode, searchable, storageKey, tileTitle } from './types';
 
@@ -115,7 +115,7 @@ export default function Menu() {
         : folder && !items.length ? <p className="menu-empty">{searching ? 'No screenshots match.' : 'No screenshots yet.'}</p>
         : items.map(item => <button key={item.id} className="menu-shot" title={tileTitle(item, `${fileName(item.path)}\n${dateLabel(item.date, true)}`)} onClick={() => send('open', item.id)}>
           <img src={imageUrl(item.id)} alt={fileName(item.path)} decoding="async" />
-          {item.note && <span className="noted" aria-label="Has a note"><StickyNote /></span>}
+          {(item.note || item.drawn) && <span className="marks">{item.note && <span aria-label="Has a note"><StickyNote /></span>}{item.drawn && <span aria-label="Has a drawing"><PenLine /></span>}</span>}
         </button>)}
     </div>
   </div>;

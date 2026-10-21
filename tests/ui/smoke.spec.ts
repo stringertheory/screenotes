@@ -219,7 +219,11 @@ test('draws on a screenshot in Excalidraw and keeps the drawing as an SVG beside
     expect(top + height).toBeGreaterThan(48);
   });
 
-  await test.step('the viewer shows the drawing over the screenshot', async () => {
+  await test.step('the viewer shows the drawing over the screenshot, and hides it', async () => {
+    await expect(viewer.locator('svg.drawn image')).toHaveCount(2);
+    await viewer.getByRole('button', { name: 'Hide drawing' }).click();
+    await expect(viewer.locator('svg.drawn')).toHaveCount(0);
+    await page.keyboard.press('d');
     await expect(viewer.locator('svg.drawn image')).toHaveCount(2);
     await viewer.getByRole('button', { name: 'Edit drawing' }).click();
     await expect(canvas).toBeVisible();
@@ -237,6 +241,13 @@ test('draws on a screenshot in Excalidraw and keeps the drawing as an SVG beside
     expect(readFileSync(drawing, 'utf8').match(/viewBox="([^"]+)"/)![1]).toBe(before);
   });
 
+  await test.step('its tile in the grid says it has a drawing', async () => {
+    await page.keyboard.press('Escape');
+    await expect(viewer).toBeHidden();
+    await page.getByRole('button', { name: /^Open red\.png, which has a drawing$/ }).click();
+    await expect(viewer).toBeVisible();
+  });
+
   await test.step('clearing the drawing removes the SVG', async () => {
     await viewer.getByRole('button', { name: 'Edit drawing' }).click();
     await expect(canvas).toBeVisible();
@@ -246,6 +257,8 @@ test('draws on a screenshot in Excalidraw and keeps the drawing as an SVG beside
     await expect(canvas).toBeHidden();
     expect(existsSync(drawing)).toBe(false);
     await expect(viewer.getByRole('button', { name: 'Draw on it' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Open red.png', exact: true })).toBeVisible();
   });
 
   expect(problems).toEqual([]);

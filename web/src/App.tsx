@@ -247,6 +247,7 @@ export default function App() {
   // Image searches are answered by a ranked grid, wherever they start.
   // A note saved in the viewer shows on its tile at once, without reloading the grid.
   const noteSaved = useCallback((id: string, note: string | null) => setItems(old => old.map(item => item.id === id ? { ...item, note } : item)), []);
+  const drawingSaved = useCallback((id: string, drawn: boolean) => setItems(old => old.map(item => item.id === id ? { ...item, drawn } : item)), []);
   const findSimilar = useCallback((id: string) => { clearSearch(); setPicked(null); setSelected(null); setView('grid'); setSimilar(id); setMode('visual'); }, [clearSearch]);
   const searchWithImage = useCallback((file: File) => {
     if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) { setError('Choose an image file to search.'); return; }
@@ -354,8 +355,8 @@ export default function App() {
     {panel === 'filters' && <FilterPanel filters={filters} anchor={anchor('filters')} onApply={setFilters} onClose={() => setPanel(null)} />}
     {panel === 'library' && status?.library && <LibraryPanel status={status} scanLeft={scanLeft} searchLeft={searchLeft} onSetUp={setUpSearch} shown={filtered && !searching && !loading ? total : null} narrowed={filtered || searching} anchor={anchor('library')} onClose={() => setPanel(null)} onRefresh={refreshStatus} />}
     {panel === 'folder' && status && <FolderPanel status={status} anchor={anchor('folder')} onOpened={applyStatus} onClose={() => setPanel(null)} />}
-    {selected !== null && items[selected] && <Viewer items={items} index={selected} onChange={changeSelected} total={total} hasMore={more} loadingMore={loadingMore} pageError={error} rootName={folder?.name ?? ''} platform={status?.platform ?? ''} filters={filters} photos={!!folder?.photos} onClose={() => setSelected(null)} onSimilar={visualReady ? findSimilar : null} onFolder={showFolder} onNote={noteSaved} />}
-    {picked && <Viewer items={[picked]} index={0} onChange={() => {}} total={1} hasMore={false} loadingMore={false} pageError="" rootName={folder?.name ?? ''} platform={status?.platform ?? ''} filters={filters} photos={!!folder?.photos} onClose={() => setPicked(null)} onSimilar={visualReady ? findSimilar : null} onFolder={showFolder} onNote={noteSaved} />}
+    {selected !== null && items[selected] && <Viewer items={items} index={selected} onChange={changeSelected} total={total} hasMore={more} loadingMore={loadingMore} pageError={error} rootName={folder?.name ?? ''} platform={status?.platform ?? ''} filters={filters} photos={!!folder?.photos} onClose={() => setSelected(null)} onSimilar={visualReady ? findSimilar : null} onFolder={showFolder} onNote={noteSaved} onDrawing={drawingSaved} />}
+    {picked && <Viewer items={[picked]} index={0} onChange={() => {}} total={1} hasMore={false} loadingMore={false} pageError="" rootName={folder?.name ?? ''} platform={status?.platform ?? ''} filters={filters} photos={!!folder?.photos} onClose={() => setPicked(null)} onSimilar={visualReady ? findSimilar : null} onFolder={showFolder} onNote={noteSaved} onDrawing={drawingSaved} />}
     {carried && <img className="carried" src={imageUrl(carried.id)} alt="" style={{ left: carried.x, top: carried.y }} />}
     <input className="sr-only" ref={uploadRef} type="file" accept="image/*,.heic,.heif" aria-label="Image to match" tabIndex={-1} onChange={e => { if (e.target.files?.[0]) searchWithImage(e.target.files[0]); e.target.value = ''; }} />
   </div>;
