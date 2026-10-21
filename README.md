@@ -86,13 +86,8 @@ network, and it turns away requests from other websites. Nothing about your scre
 
 ## Credits
 
-Screenotes is built on [Orchard Photos](https://github.com/chaseleantj/orchard-photos) by Chase Lean, an app for
-browsing and searching a folder of photos. The grid, the appearance search and the map come from Orchard; Screenotes
-adds reading Screenotate's screenshots, the notes and the menu bar item. Orchard's own documentation is in
+Screenotes is built on [Orchard Photos](https://github.com/chaseleantj/orchard-photos), an app for browsing and searching a folder of photos. The grid, the appearance search and the map come from Orchard; Screenotes adds reading Screenotate's screenshots, the notes and the menu bar item. Orchard's own documentation is in
 [`docs/`](docs/), starting with [`docs/orchard-readme.md`](docs/orchard-readme.md).
-
-Screenotes is an independent project, not affiliated with or endorsed by Screenotate or its author. It only reads the
-files Screenotate saves.
 
 ## Ideas for later
 
