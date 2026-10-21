@@ -108,7 +108,7 @@ class ScreenotateFolderTests(unittest.TestCase):
 
     def test_text_search_reads_screen_text_window_app_url_and_notes_with_every_word(self):
         self.save('one', png('red'))
-        self.save('two', png('green'), text='Quarterly report', window='Budget', app='Safari', url='https://buildhost.lan/')
+        self.save('two', png('green'), text='Quarterly report', window='Budget', app='Safari', url='https://buildhost.example/')
         self.scan()
         [terminal_id, browser_id] = [self.library.pictures({'q': name, 'mode': 'name'})['items'][0]['id'] for name in ('one', 'two')]
         self.assertEqual(self.ids('disk FULL'), [terminal_id])

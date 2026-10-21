@@ -22,3 +22,42 @@ desktop.ini
 # Playwright output
 test-results/
 playwright-report/
+
+# Screenshots never belong here. Every image and page is ignored except the app's own, which are also listed in
+# ALLOWED in scripts/check-no-screenshots; the pre-commit hook and tests/test_no_screenshots.py enforce the same rule.
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.heic
+*.heif
+*.tif
+*.tiff
+*.bmp
+*.avif
+*.ico
+*.icns
+*.svg
+*.html
+*.htm
+*.webarchive
+*.pdf
+!/index.html
+!/dist/index.html
+!/public/favicon.svg
+!/public/favicon-32.png
+!/public/apple-touch-icon.png
+!/dist/favicon.svg
+!/dist/favicon-32.png
+!/dist/apple-touch-icon.png
+!/assets/screenotes.icns
+!/assets/screenotes.ico
+!/docs/logo.svg
+!/docs/logo-inverted.svg
+!/docs/orchard-logo.svg
+!/docs/orchard-logo-inverted.svg
+!/docs/hero.gif
+
+# The login item's plist, made for this computer by scripts/install-login-item.
+/*.plist

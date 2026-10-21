@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Refuse to let a screenshot into the repo: scripts/check-no-screenshots [--staged]
+
+The app reads a folder of screenshots that are never part of the repo, so any image, Screenotate page, or file with an
+image inside it is a mistake, whatever its name. Only the app's own images, listed in ALLOWED, pass. With --staged it
+checks what is about to be committed, as the pre-commit hook in .githooks does; without, every tracked file, as
+tests/test_no_screenshots.py does.
+"""
+from pathlib import PurePosixPath
+import re
+import subprocess
+import sys
+
+# The app's own images and pages. A new one is added here on purpose, and in .gitignore.
+ALLOWED = {
+    'index.html', 'dist/index.html',
+    'public/favicon.svg', 'public/favicon-32.png', 'public/apple-touch-icon.png',
+    'dist/favicon.svg', 'dist/favicon-32.png', 'dist/apple-touch-icon.png',
+    'assets/screenotes.icns', 'assets/screenotes.ico',
+    'docs/logo.svg', 'docs/logo-inverted.svg', 'docs/orchard-logo.svg', 'docs/orchard-logo-inverted.svg',
+    'docs/hero.gif',
+}
+# Screenshots, photos and Screenotate's pages, by name.
+EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic', '.heif', '.tif', '.tiff', '.bmp', '.avif', '.ico',
+              '.icns', '.svg', '.html', '.htm', '.webarchive', '.pdf'}
+# The same, by content, so a renamed file is caught too.
+MAGIC = [b'\x89PNG', b'\xff\xd8\xff', b'GIF8', b'II*\x00', b'MM\x00*', b'%PDF']
+# BMP, HEIC/AVIF and WebP headers, whose leading bytes alone could begin a text file.
+SHAPES = [re.compile(rb'^BM.{4}\x00{4}', re.S), re.compile(rb'^.{4}ftyp(heic|heix|mif1|avif)', re.S),
+          re.compile(rb'^RIFF.{4}WEBP', re.S)]
+# An image written inside a text file, as a Screenotate page holds its screenshot.
+EMBEDDED = re.compile(rb'data:image/[a-z+.-]+;base64,[A-Za-z0-9+/=\s]{200,}')
+LARGEST = 1_000_000
+
+
+def problems(path: str, data: bytes) -> list[str]:
+    """What is wrong with committing data at path, or nothing."""
+    if path in ALLOWED:
+        return []
+    found = []
+    if PurePosixPath(path).suffix.lower() in EXTENSIONS:
+        found.append('is an image or page by its name')
+    if any(data.startswith(magic) for magic in MAGIC) or any(shape.match(data) for shape in SHAPES):
+        found.append('is an image by its contents')
+    if EMBEDDED.search(data):
+        found.append('has an image embedded in it')
+    if len(data) > LARGEST:
+        found.append(f'is {len(data):,} bytes, over the {LARGEST:,} limit')
+    return found
+
+
+def git(*args) -> bytes:
+    return subprocess.run(['git', *args], check=True, capture_output=True).stdout
+
+
+def files(staged: bool):
+    """(path, contents) for what is staged, or for every tracked file, read from the index: what a commit holds,
+    whatever the working copy says."""
+    wanted = set(filter(None, git('diff', '--cached', '--name-only', '-z', '--diff-filter=ACMR').decode().split('\0')))
+    entries = []
+    for entry in filter(None, git('ls-files', '--stage', '-z').decode().split('\0')):
+        info, path = entry.split('\t', 1)
+        if not staged or path in wanted:
+            entries.append((path, info.split()[1]))
+    blobs = subprocess.run(['git', 'cat-file', '--batch'], input=''.join(f'{blob}\n' for _, blob in entries).encode(),
+                           check=True, capture_output=True).stdout
+    at = 0
+    for path, _ in entries:
+        header_end = blobs.index(b'\n', at)
+        size = int(blobs[at:header_end].split()[2])
+        yield path, blobs[header_end + 1:header_end + 1 + size]
+        at = header_end + 1 + size + 1
+
+
+def main(argv: list[str]) -> int:
+    staged = '--staged' in argv
+    failures = [(path, found) for path, data in files(staged) if (found := problems(path, data))]
+    for path, found in failures:
+        print(f'{path}: {", ".join(found)}', file=sys.stderr)
+    if failures:
+        print('\nScreenshots and other images never belong in this repo. Unstage these with git restore --staged '
+              '<path>. If one is really part of the app, add it to ALLOWED in scripts/check-no-screenshots and to '
+              '.gitignore.', file=sys.stderr)
+    return 1 if failures else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

@@ -6,6 +6,9 @@ A browser for a folder of [Screenotate](https://screenotate.com) screenshots, wi
 [Orchard Photos](https://github.com/chaseleantj/orchard-photos), so it keeps Orchard's timeline grid, visual search
 and map, and adds what Screenotate knows about each screenshot.
 
+Screenotes is an independent project. It is not affiliated with or endorsed by Screenotate or its author; it only reads
+the files Screenotate saves.
+
 ## What it adds to Orchard
 
 - **Screenotate pages are screenshots.** Screenotate saves each screenshot as a `.png` and a `.html` page that
@@ -38,17 +41,12 @@ The item lists recent screenshots and searches their text and notes. Clicking on
 note box. Return in the search field opens the full search. If Screenotes is already running in its window, the item
 uses that copy.
 
-At login the item starts from the LaunchAgent `local.screenotes.menubar.plist` in this directory, with the folder
-last opened. The plist is symlinked into `~/Library/LaunchAgents`. A crash restarts it, and Quit keeps it quit until the
-next login. Its log is `~/Library/Logs/local.screenotes.menubar.log`. To install or remove it:
-
-```bash
-ln -s /path/to/screenotes/local.screenotes.menubar.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.screenotes.menubar.plist   # start now
-launchctl bootout gui/$(id -u)/local.screenotes.menubar && rm ~/Library/LaunchAgents/local.screenotes.menubar.plist
-```
-
-After pulling new code, restart it: `launchctl kickstart -k gui/$(id -u)/local.screenotes.menubar`.
+To start the item at login, run `scripts/install-login-item`. It fills in
+[`scripts/login-item.plist.in`](scripts/login-item.plist.in) for this clone as a LaunchAgent named
+`local.screenotes.menubar` (choose another with `--label`), links it into `~/Library/LaunchAgents` and starts it. The
+item opens the folder last opened. A crash restarts it, and Quit keeps it quit until the next login. Its log is
+`~/Library/Logs/<label>.log`. After pulling new code, restart it with
+`launchctl kickstart -k gui/$(id -u)/<label>`; `scripts/install-login-item --remove` stops it starting at login.
 
 The first run installs the Python packages into `.venv`. Visual search downloads a ~500 MB model once, when you set
 it up; text search and notes work without it.
@@ -57,6 +55,19 @@ The rest of the documentation in [`docs/`](docs/) is Orchard's and still describ
 [how it works](docs/how-it-works.md) and [development](docs/development.md). Orchard's own README is
 [`docs/orchard-readme.md`](docs/orchard-readme.md).
 
+## Keeping screenshots out of the repo
+
+The screenshots this app reads never belong in the repo, and three things keep them out. `.gitignore` ignores every
+image and HTML page except the app's own. [`scripts/check-no-screenshots`](scripts/check-no-screenshots) refuses any
+other image, by name or by contents, a file with an image embedded in it, as a Screenotate page has, and any file
+over 1 MB. It runs before each commit once the hook is turned on, which each clone does once:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`tests/test_no_screenshots.py` runs the same check over every tracked file.
+
 ## License
 
-[MIT](LICENSE), as Orchard is.
+[MIT](LICENSE), as Orchard is. Orchard's copyright notice stays in it, beside one for the Screenotes changes.

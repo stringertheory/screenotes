@@ -1,0 +1,37 @@
+#!/bin/zsh
+# Start the menu bar item at login: scripts/install-login-item [--label name] [--remove]
+# Fills in scripts/login-item.plist.in for this clone as <label>.plist here (gitignored), links it into
+# ~/Library/LaunchAgents and starts it now. --remove stops it and removes the link, leaving the plist here.
+set -e
+[[ $(uname) == Darwin ]] || { print -u2 'scripts/install-login-item sets up a macOS login item.'; exit 1; }
+root=${0:A:h:h}
+label=local.screenotes.menubar
+remove=
+while (( $# )); do
+  case $1 in
+    --label) label=$2; shift 2 ;;
+    --remove) remove=1; shift ;;
+    *) print -u2 "Usage: scripts/install-login-item [--label name] [--remove]"; exit 2 ;;
+  esac
+done
+[[ $label =~ '^[A-Za-z0-9._-]+$' ]] || { print -u2 "A label is letters, digits, dots, dashes and underscores: $label"; exit 2; }
+plist=$root/$label.plist
+link=~/Library/LaunchAgents/$label.plist
+domain=gui/$(id -u)
+
+launchctl bootout $domain/$label 2> /dev/null || true
+# bootout returns before the old copy has exited, and launchd refuses to load the label again until it has.
+for _ in {1..50}; do launchctl print $domain/$label &> /dev/null || break; sleep 0.2; done
+if [[ -n $remove ]]; then
+  rm -f $link
+  print "Removed $label. It won't start at login."
+  exit
+fi
+[[ -x $root/.venv/bin/python ]] || { print -u2 "Run ./orchard once first, so .venv exists."; exit 1; }
+sed -e "s|@LABEL@|$label|g" -e "s|@REPO@|$root|g" -e "s|@LOG@|$HOME/Library/Logs/$label.log|g" \
+  $root/scripts/login-item.plist.in > $plist
+plutil -lint -s $plist
+mkdir -p ~/Library/LaunchAgents
+ln -sf $plist $link
+launchctl bootstrap $domain $link
+print "Installed $label: it starts at login and is running now. Log: ~/Library/Logs/$label.log"

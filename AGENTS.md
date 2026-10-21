@@ -30,6 +30,12 @@ npm run build   # rebuild dist/, which is committed
 
 Never print screenshot contents (OCR text, window titles, URLs) from the real folder while testing: report counts.
 
+The repo is public, and no screenshot may ever be committed: not the real folder's, and not a copy made to reproduce
+a bug. Test images are made in code. `scripts/check-no-screenshots` runs as the pre-commit hook (`git config
+core.hooksPath .githooks`) and in the tests; a new image the app itself needs goes in its `ALLOWED` list and in
+`.gitignore`. Keep personal paths, hostnames and labels out of committed files: the login item's plist is made from
+`scripts/login-item.plist.in` by `scripts/install-login-item`.
+
 ## Next
 
 - Fuzzy text search: SQLite FTS5 with the trigram tokenizer over screen text, titles, URL and notes.
