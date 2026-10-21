@@ -5,12 +5,14 @@ import io
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
+# Run through Python, since Windows can't start a script by its #! line.
 SCRIPT = ROOT / 'scripts' / 'check-no-screenshots'
 loader = SourceFileLoader('check_no_screenshots', str(SCRIPT))
 check = module_from_spec(spec_from_loader(loader.name, loader))
@@ -31,7 +33,7 @@ def page() -> bytes:
 @unittest.skipUnless(shutil.which('git') and (ROOT / '.git').exists(), 'needs the git checkout')
 class RepoTests(unittest.TestCase):
     def test_nothing_tracked_is_a_screenshot(self):
-        result = subprocess.run([str(SCRIPT)], cwd=ROOT, capture_output=True, text=True)
+        result = subprocess.run([sys.executable, str(SCRIPT)], cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_a_commit_with_a_renamed_screenshot_is_stopped(self):
@@ -42,7 +44,7 @@ class RepoTests(unittest.TestCase):
             Path(folder, 'notes.txt').write_bytes(png())
             Path(folder, 'readme.md').write_text('Fine.\n')
             git('add', '.')
-            result = subprocess.run([str(SCRIPT), '--staged'], cwd=folder, capture_output=True, text=True)
+            result = subprocess.run([sys.executable, str(SCRIPT), '--staged'], cwd=folder, capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn('notes.txt: is an image by its contents', result.stderr)
             self.assertNotIn('readme.md', result.stderr)
