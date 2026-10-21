@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { Check, Search, Settings } from 'lucide-react';
+import { Check, Search, Settings, StickyNote } from 'lucide-react';
 import type { Picture, Results, SearchMode, Status } from './types';
-import { APP_NAME, dateLabel, fileName, imageUrl, post, readSearchMode, request, saveSearchMode, searchable, storageKey } from './types';
+import { APP_NAME, dateLabel, fileName, imageUrl, post, readSearchMode, request, saveSearchMode, searchable, storageKey, tileTitle } from './types';
 
 const LIMITS = [5, 10, 20, 50];
 const LIMIT_KEY = storageKey('menu.limit');
@@ -113,8 +113,9 @@ export default function Menu() {
       {error ? <p className="menu-empty">{error}</p>
         : folder === false ? <p className="menu-empty">No folder is open. <button className="menu-link" onClick={() => send('home')}>Open {APP_NAME}</button> to choose one.</p>
         : folder && !items.length ? <p className="menu-empty">{searching ? 'No screenshots match.' : 'No screenshots yet.'}</p>
-        : items.map(item => <button key={item.id} className="menu-shot" title={`${fileName(item.path)}\n${dateLabel(item.date, true)}`} onClick={() => send('open', item.id)}>
+        : items.map(item => <button key={item.id} className="menu-shot" title={tileTitle(item, `${fileName(item.path)}\n${dateLabel(item.date, true)}`)} onClick={() => send('open', item.id)}>
           <img src={imageUrl(item.id)} alt={fileName(item.path)} decoding="async" />
+          {item.note && <span className="noted" aria-label="Has a note"><StickyNote /></span>}
         </button>)}
     </div>
   </div>;

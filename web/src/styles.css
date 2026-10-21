@@ -90,6 +90,9 @@ svg { width: var(--icon); height: var(--icon); stroke-width: 1.5; flex-shrink: 0
 .picture img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity var(--motion) var(--ease); }
 .picture:hover img { opacity: .87; }
 .picture:focus-visible { outline-offset: var(--s1); }
+/* Solid, so it shows on a white screenshot as well as a dark one. */
+.picture .noted, .menu-shot .noted { position: absolute; left: var(--s2); bottom: var(--s2); display: flex; padding: 5px; border-radius: var(--pill); background: var(--ink); color: var(--bg); box-shadow: 0 1px 3px #0000004d; }
+.picture .noted svg, .menu-shot .noted svg { width: 14px; height: 14px; }
 .picture .missing { display: flex; height: 100%; align-items: center; justify-content: center; color: var(--muted); padding: var(--s4); }
 .picture .members { position: absolute; right: var(--s2); bottom: var(--s2); display: flex; align-items: center; gap: var(--s1); padding: 2px var(--s2); border-radius: var(--pill); background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--ink); font-variant-numeric: tabular-nums; }
 /* The timeline: a column of years in the right gutter, beside a marker for where the grid is. */
@@ -311,7 +314,7 @@ html.menu-page[data-theme='dark'] { --menu-well: #1e1e1e; --menu-field: #2a2a2a;
 .menu-settings hr { margin: 4px 8px; border: 0; border-top: 1px solid var(--menu-field-line); }
 .menu-label { margin: 10px 2px 4px; }
 .menu-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--menu-well); border: 1px solid var(--menu-field-line); }
-.menu-shot { flex: none; display: block; width: 100%; height: 96px; padding: 0; border: 0; background: var(--soft); cursor: default; overflow: hidden; box-shadow: 0 0 0 1px #00000014; }
+.menu-shot { position: relative; flex: none; display: block; width: 100%; height: 96px; padding: 0; border: 0; background: var(--soft); cursor: default; overflow: hidden; box-shadow: 0 0 0 1px #00000014; }
 .menu-shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: filter var(--motion) var(--ease); }
 .menu-shot:hover img { filter: brightness(.92); }
 .menu-shot:focus-visible { outline: 3px solid -webkit-focus-ring-color; outline-offset: 1px; }

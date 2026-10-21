@@ -1,7 +1,7 @@
 import { memo, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Layers } from 'lucide-react';
+import { Layers, StickyNote } from 'lucide-react';
 import type { Picture } from './types';
-import { dragImage, fileName, imageUrl, monthLabel, plural } from './types';
+import { dragImage, fileName, imageUrl, monthLabel, plural, tileTitle } from './types';
 
 const BUFFER = 1200;
 const STEP = 400;
@@ -119,9 +119,10 @@ export default function Gallery({ items, sections, onOpen, ref }: { items: Pictu
 const Tile = memo(function Tile({ item, index, style, onOpen }: { item: Picture; index: number; style: React.CSSProperties; onOpen: (index: number) => void }) {
   const [failed, setFailed] = useState(false);
   const name = fileName(item.path);
-  const label = item.members > 1 ? `Open ${name} and ${plural(item.members - 1, 'near-duplicate')}` : `Open ${name}`;
-  return <button className="picture" style={style} onClick={() => onOpen(index)} aria-label={label} title={item.path}>
+  const label = (item.members > 1 ? `Open ${name} and ${plural(item.members - 1, 'near-duplicate')}` : `Open ${name}`) + (item.note ? ', which has a note' : '');
+  return <button className="picture" style={style} onClick={() => onOpen(index)} aria-label={label} title={tileTitle(item, item.path)}>
     {failed ? <span className="missing">Preview unavailable</span> : <img src={imageUrl(item.id)} alt={name} decoding="async" onDragStart={dragImage(item.id)} onError={() => setFailed(true)} />}
+    {item.note && <span className="noted" aria-hidden="true"><StickyNote /></span>}
     {item.members > 1 && <span className="members" aria-hidden="true"><Layers />{item.members.toLocaleString()}</span>}
   </button>;
 });

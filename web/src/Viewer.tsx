@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Copy, Download, FolderOpen, Images, ScanSearch, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { Details, Filters, Picture, Results } from './types';
 import NoteEditor from './Note';
@@ -10,13 +10,15 @@ interface Props {
   /** The Photos library has no folders, and its photos are shown in Photos rather than Finder. */
   photos: boolean;
   onChange: (index: number) => void; onClose: () => void; onSimilar: ((id: string) => void) | null; onFolder: (folder: string) => void;
+  /** A note was saved, so the grid's tile can show it. */
+  onNote: (id: string, note: string | null) => void;
 }
 // The deepest folders name a place; the rest of a long path is in the tooltip and under Details.
 const CRUMBS = 3;
 // Browsers refuse canvases much larger than this.
 const CLIPBOARD_PIXELS = 50_000_000;
 
-export default function Viewer({ items, index, total, hasMore, loadingMore, pageError, rootName, platform, filters, photos, onChange, onClose, onSimilar, onFolder }: Props) {
+export default function Viewer({ items, index, total, hasMore, loadingMore, pageError, rootName, platform, filters, photos, onChange, onClose, onSimilar, onFolder, onNote }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [details, setDetails] = useState<Details | null>(null);
   const [error, setError] = useState('');
@@ -59,6 +61,8 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
       .catch(e => { if (e.name !== 'AbortError') setError(e.message); });
     return () => controller.abort();
   }, [front.id, front.group, front.members, filters]);
+  const itemId = item.id;
+  const saved = useCallback((note: string | null) => onNote(itemId, note), [onNote, itemId]);
   const show = async (path: string) => { setError(''); try { await post(`/api/images/${item.id}/reveal`, { path }); } catch (e) { setError((e as Error).message); } };
   const copy = async () => {
     const id = item.id;
@@ -107,7 +111,7 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
           {capture && <p className="capture-source">{[capture.app, capture.window].filter(Boolean).join(' · ')}</p>}
           {capture?.url && <a className="capture-url" href={capture.url} target="_blank" rel="noreferrer" title={capture.url}>{capture.url}</a>}
         </div>
-        {details ? <NoteEditor key={item.id} id={item.id} note={details.note} /> : <div className="note-placeholder" />}
+        {details ? <NoteEditor key={item.id} id={item.id} note={details.note} onSaved={saved} /> : <div className="note-placeholder" />}
         <div className="detail-actions">
           {onSimilar && <button className="text-button" onClick={() => onSimilar(item.id)}><ScanSearch />Find similar</button>}
           <button className="text-button" onClick={copy}>{copied?.id === item.id ? <Check /> : <Copy />}Copy image</button>

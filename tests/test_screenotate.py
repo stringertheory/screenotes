@@ -140,6 +140,15 @@ class ScreenotateFolderTests(unittest.TestCase):
         self.assertFalse((self.folder / 'Screenshot C.txt').exists())
         self.assertIsNone(self.library.details(image_id)['note'])
 
+    def test_each_tile_carries_its_note_for_the_badge_and_tooltip(self):
+        self.save('one', png('red'))
+        self.save('two', png('green'))
+        self.scan()
+        first, second = self.library.pictures({})['items']
+        self.library.save_note(first['id'], 'Why I kept this')
+        notes = {row['id']: row['note'] for row in self.library.pictures({})['items']}
+        self.assertEqual(notes, {first['id']: 'Why I kept this', second['id']: None})
+
     def test_a_note_written_outside_the_app_is_read_and_searched_after_a_scan(self):
         self.save('Screenshot D', png('blue'))
         self.library.scan()

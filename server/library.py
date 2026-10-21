@@ -237,7 +237,7 @@ class Library:
             where.append('coalesce(g.group_id, f.image_id)=?')
             values.append(group)
             rows = self.tiles(where, values, collapse=False)
-            return {'items': [dict(row) for row in rows], 'total': len(rows), 'offset': 0, 'hasMore': False}
+            return {'items': self.marked(rows), 'total': len(rows), 'offset': 0, 'hasMore': False}
         offset = max(0, int(params.get('offset', '0')))
         limit = min(MAX_PAGE, max(1, int(params.get('limit', str(PAGE_SIZE)))))
         visual = bool(image_bytes or reference or (query and params.get('mode') == 'visual'))
@@ -256,8 +256,14 @@ class Library:
                 own = db.execute('SELECT coalesce((SELECT group_id FROM image_groups WHERE image_id=?), ?)', (reference, reference)).fetchone()[0]
             rows = [row for row in self.tiles(where, values) if row['id'] in ranking]
             rows.sort(key=lambda row: (row['group'] == own, ranking[row['id']]), reverse=True)
-        return {'items': [dict(row) for row in rows[offset:offset + limit]], 'total': len(rows), 'offset': offset,
+        return {'items': self.marked(rows[offset:offset + limit]), 'total': len(rows), 'offset': offset,
                 'hasMore': offset + limit < len(rows)}
+
+    def marked(self, rows) -> list[dict]:
+        """Tiles as sent, each with its image's note text, or None, for the tile's badge and tooltip. Added as sent
+        rather than kept in the tile cache, since a note changes without the folder changing."""
+        notes = self.notes
+        return [{**dict(row), 'note': notes.get(row['id'])} for row in rows]
 
     def timeline(self, params):
         """How many tiles the date-ordered grid shows in each month, newest first, in the viewer's time zone: the

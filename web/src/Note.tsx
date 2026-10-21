@@ -9,7 +9,7 @@ const LABELS: Record<State, string> = { '': '', saving: 'Saving…', saved: 'Sav
 
 /** The note on one image, saved as it is typed and whenever it is left. Keyed by image, so moving to another image
  *  saves this one first. */
-export default function NoteEditor({ id, note }: { id: string; note: Note | null }) {
+export default function NoteEditor({ id, note, onSaved }: { id: string; note: Note | null; onSaved?: (text: string | null) => void }) {
   const [text, setText] = useState(note?.text ?? '');
   const [state, setState] = useState<State>('');
   const saved = useRef(note?.text ?? '');
@@ -23,9 +23,10 @@ export default function NoteEditor({ id, note }: { id: string; note: Note | null
     try {
       await post(`/api/images/${id}/note`, { text: value });
       saved.current = value;
+      onSaved?.(value.trim() ? value : null);
       setState(latest.current === value ? 'saved' : 'saving');
     } catch { setState('error'); }
-  }, [id]);
+  }, [id, onSaved]);
   useEffect(() => () => { void save(); }, [save]);
   return <section className="note" aria-label="Note">
     <label className="sr-only" htmlFor="note">Note</label>
