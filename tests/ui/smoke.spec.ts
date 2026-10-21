@@ -118,4 +118,17 @@ test('opens a folder and browses, filters, maps and searches it', async ({ page 
     await expect(box).toBeFocused();
     await page.getByRole('button', { name: 'Grid', exact: true }).click();
   });
+
+  await test.step('a note typed in a linked viewer outlasts the status polls', async () => {
+    const id = (await pictures.nth(1).locator('img').getAttribute('src'))!.split('/').at(-2)!;
+    await page.goto(`/?image=${id}`);
+    const note = page.getByRole('dialog', { name: 'Image viewer' }).getByRole('textbox', { name: 'Note' });
+    await note.click();
+    // The page polls its status every few seconds; each poll used to rebuild the note box.
+    for (const word of ['why ', 'I ', 'took ', 'this']) { await page.keyboard.type(word); await page.waitForTimeout(1500); }
+    await expect(note).toHaveValue('why I took this');
+    await expect(note).toBeFocused();
+    await note.fill('');
+    await note.blur();
+  });
 });

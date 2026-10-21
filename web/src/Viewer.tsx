@@ -41,13 +41,15 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
     document.body.style.overflow = 'hidden';
     return () => { node.close(); document.body.style.overflow = previous; focus?.focus(); };
   }, []);
+  // Only another image reloads the details: reloading them would also replace the note being typed.
   useEffect(() => {
     const controller = new AbortController();
     setZoom(false); setFailed(false); setError(''); setDetails(null);
     request<Details>(`/api/images/${item.id}`, { signal: controller.signal }).then(setDetails).catch(e => { if (e.name !== 'AbortError') setError(e.message); });
-    if (items[index + 1]) { const next = new Image(); next.src = imageUrl(items[index + 1].id, 'display'); }
     return () => controller.abort();
-  }, [item.id, index, items]);
+  }, [item.id]);
+  const nextId = items[index + 1]?.id;
+  useEffect(() => { if (nextId) { const next = new Image(); next.src = imageUrl(nextId, 'display'); } }, [nextId]);
   useEffect(() => {
     setMembers([]); setShown(0);
     if (front.members < 2) return;
