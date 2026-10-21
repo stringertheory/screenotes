@@ -6,6 +6,7 @@ excalidraw.com can open it again. The screenshot is in it only as a link to the 
 opened on its own shows the screenshot with the drawing over it. Its coordinates are the screenshot's pixels: the
 viewBox says where the drawing reaches, which can be past the screenshot's edges.
 """
+import html
 import os
 from pathlib import Path
 import re
@@ -19,6 +20,8 @@ ROOT = re.compile(r'<svg\b[^>]*>', re.S)
 VIEW_BOX = re.compile(r'\bviewBox\s*=\s*["\']\s*([-+\d.eE\s,]+?)\s*["\']')
 # Excalidraw marks its exports just inside the root. Any other SVG of the screenshot's name is someone else's file.
 SOURCE = '<!-- svg-source:excalidraw -->'
+# Excalidraw draws each line of its text as one <text> element, with the text itself escaped.
+TEXT = re.compile(r'<text\b[^>]*>([^<]*)</text>')
 
 
 def annotation_path(folder: Path, relative: str) -> Path:
@@ -47,6 +50,17 @@ def box(path: Path) -> list[float] | None:
     except ValueError:
         return None
     return values if len(values) == 4 and values[2] > 0 and values[3] > 0 else None
+
+
+def text(path: Path) -> str | None:
+    """The words written in a drawing, a line each, for search: '' for a drawing without any, None for no drawing."""
+    if box(path) is None:
+        return None
+    try:
+        svg = path.read_text(encoding='utf-8', errors='replace')
+    except OSError:
+        return None
+    return '\n'.join(line for match in TEXT.finditer(svg) if (line := html.unescape(match.group(1)).strip()))
 
 
 def write(path: Path, svg: str):

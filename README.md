@@ -22,7 +22,7 @@ In the menu bar, the window and the browser tab, the app is called **Screenshots
   pasted images. The drawing shows over the screenshot from then on, and the eye button (or D) hides it. Screenshots
   with a drawing have a pen badge in the grid and the menu, as those with a note have a note badge.
 - **Search by text.** Type a few words. A screenshot matches when every word appears somewhere in its screen text,
-  window title, app, URL, file name or note.
+  window title, app, URL, file name, note or the text in its drawing.
 - **Search by appearance.** Optionally, describe what a screenshot looked like ("a bar chart", "a map"), or find
   screenshots that look like another one or like an image file. This needs a one-time download of about 500 MB, and
   runs entirely on your Mac.

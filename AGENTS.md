@@ -11,7 +11,7 @@ fixes still merge: `git fetch upstream && git merge upstream/main`.
 - `server/scanner.py`: lists `.html` files only when their first 2 KB say Screenotate; hashes the embedded PNG, so a
   page and its `.png` are one image; writes the `captures` table, and dates the image by the capture.
 - `server/library.py`: prefers the `.png` over the page for naming and showing (`PAGE_LAST`); writes out the embedded
-  PNG for a page with no PNG beside it; text search matches path, `captures` fields and notes.
+  PNG for a page with no PNG beside it; text search matches path, `captures` fields, notes and the text in drawings.
 - `server/notes.py` and `Library.note`/`save_note`/`read_notes`: a note is a plain UTF-8 text file beside its
   screenshot, `<name>.txt` for `<name>.png`/`.html`, paired by name only, as Screenotate pairs its two files. The file
   is the whole note (no header). A new note goes beside the file the image is shown by; clearing it deletes the file;
@@ -20,19 +20,20 @@ fixes still merge: `git fetch upstream && git merge upstream/main`.
   aren't followed: a `.txt` with no screenshot of its name is ignored. Photos libraries have no notes.
 - `scripts/extract-pngs FOLDER [--write]` (run with `.venv/bin/python`): writes each page's embedded PNG, byte for
   byte, as `<name>.png` beside it, so its image id and note stay; never overwrites. Counts only without `--write`.
-- `server/annotations.py`, `Library.annotation`/`save_annotation` and `web/src/Annotate.tsx`: a drawing is
-  Excalidraw's SVG export (scene embedded, so excalidraw.com reopens it) as `<name>.svg` beside the screenshot, paired
-  by name like a note. The screenshot is one locked image element (id and file id `screenshot`) whose file the page
-  fills with the PNG on opening and with the PNG's relative name on saving, so the SVG links to it and never holds
-  it. The saved SVG is rewritten into the screenshot's pixel grid (`viewBox` may reach past its edges), which is how
-  the viewer's `Drawn` lays it over the image; screenshots 2000 px or more are placed at half size in the scene, so
-  Excalidraw's sizes read as points. The server only writes, and never replaces or deletes, SVGs marked
-  `svg-source:excalidraw`. App.tsx's paste and drop searches stand aside while `.annotator` is open. `Library.drawn` (the image ids
-  with an Excalidraw SVG) is read with the notes and sent as tiles' `drawn`, for the pen badge. Excalidraw is
-  lazy-loaded, and `vite.config.ts` pins chunks (`app`, `annotate`, `excalidraw`, `vendor`) so that changing the app
-  renames only `app`, `annotate` and the entry in `dist/`, not Excalidraw's hundred or so chunks; its fonts but the 12 MB CJK one are copied to `dist/excalidraw/fonts` by `vite.config.ts`. Its glyph
-  subsetting needs `eval` under our CSP, so it embeds whole font slices instead, and it logs CSP errors for its
-  esm.sh font fallback, which are harmless.
+- `server/annotations.py`, `Library.annotation`/`save_annotation` and `web/src/Annotate.tsx`: a drawing is Excalidraw's
+  SVG export (scene embedded, so excalidraw.com reopens it) as `<name>.svg` beside the screenshot, paired by name like a
+  note. The screenshot is one locked image element (id and file id `screenshot`) whose file the page fills with the PNG
+  on opening and with the PNG's relative name on saving, so the SVG links to it and never holds it. The saved SVG is
+  rewritten into the screenshot's pixel grid (`viewBox` may reach past its edges), which is how the viewer's `Drawn`
+  lays it over the image; screenshots 2000 px or more are placed at half size in the scene, so Excalidraw's sizes read
+  as points. The server only writes, and never replaces or deletes, SVGs marked `svg-source:excalidraw`. App.tsx's paste
+  and drop searches stand aside while `.annotator` is open. `Library.drawings` (image id → the text in its drawing, from
+  the SVG's `<text>` elements) is read with the notes: its keys are tiles' `drawn`, for the pen badge, and `noted()`
+  searches its text with the notes'. Excalidraw is lazy-loaded, and `vite.config.ts` pins chunks (`app`, `annotate`,
+  `excalidraw`, `vendor`) so that changing the app renames only `app`, `annotate` and the entry in `dist/`, not
+  Excalidraw's hundred or so chunks; its fonts but the 12 MB CJK one are copied to `dist/excalidraw/fonts` by
+  `vite.config.ts`. Its glyph subsetting needs `eval` under our CSP, so it embeds whole font slices instead, and it logs
+  CSP errors for its esm.sh font fallback, which are harmless.
 - `server/menubar.py` and `web/src/Menu.tsx`: `--menubar` runs an NSStatusItem whose NSPopover holds a WKWebView of
   `/menu`. The page sends `{action, value}` string messages through `window.webkit.messageHandlers.screenotes`;
   `menubar.action()` validates them and opens `/?image=<id>` or `/?mode=name&q=…` in the default browser. With a
@@ -87,12 +88,12 @@ npm run test:ui # Playwright smoke test (once: npx playwright install chromium)
 
 Never print screenshot contents (OCR text, window titles, URLs) from the real folder while testing: report counts.
 
-The repo is public, and no screenshot may ever be committed: not the real folder's, and not a copy made to reproduce
-a bug. Test images are made in code. `scripts/check-no-screenshots` runs as the pre-commit hook (`git config
+The repo is public, and no screenshot may ever be committed: not the real folder's, and not a copy made to reproduce a
+bug. Test images are made in code. `scripts/check-no-screenshots` runs as the pre-commit hook (`git config
 core.hooksPath .githooks`) and in the tests; a new image the app itself needs goes in its `ALLOWED` list and in
-`.gitignore`. Built scripts in `dist/assets/` (hashed names) may be up to 5 MB and hold
-embedded images under 2,000 characters, such as the JPEG pica, used by Excalidraw, probes EXIF with. Keep personal paths, hostnames and labels out of committed files: the login item's plist is made from
-`scripts/login-item.plist.in` by `scripts/install-login-item`.
+`.gitignore`. Built scripts in `dist/assets/` (hashed names) may be up to 5 MB and hold embedded images under 2,000
+characters, such as the JPEG pica, used by Excalidraw, probes EXIF with. Keep personal paths, hostnames and labels out
+of committed files: the login item's plist is made from `scripts/login-item.plist.in` by `scripts/install-login-item`.
 
 ## Merging Orchard
 

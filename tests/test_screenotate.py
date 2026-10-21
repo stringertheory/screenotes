@@ -117,6 +117,24 @@ class ScreenotateFolderTests(unittest.TestCase):
         self.assertEqual(self.ids('router quarterly'), [browser_id])
         self.assertEqual(self.ids('router disk'), [])
 
+    def test_text_search_reads_the_words_written_in_drawings(self):
+        self.save('one', png('red'))
+        self.save('two', png('green'))
+        self.scan()
+        [one] = self.ids('one')
+        [two] = self.ids('two')
+        self.library.save_annotation(one, drawing(extra='<text x="0" y="0">Ask Sam about the margin</text>'))
+        self.assertEqual(self.ids('MARGIN'), [one])
+        self.assertEqual(self.ids('"ask sam"'), [one])
+        # Words from a drawing, a note and the screen text together.
+        self.library.save_note(one, 'quarterly')
+        self.assertEqual(self.ids('margin quarterly disk'), [one])
+        (self.folder / 'two.svg').write_text(drawing(extra='<text x="0" y="0">margin call</text>'))
+        self.library.scan()
+        self.assertEqual(sorted(self.ids('margin')), sorted([one, two]))
+        self.library.save_annotation(one, '')
+        self.assertEqual(self.ids('margin'), [two])
+
     def test_quotes_make_a_phrase_rather_than_being_searched_for(self):
         self.save('one', png('red'), text='A pen-plotted map of the coast')
         self.save('two', png('green'), text='The pen, and a plotted course')
@@ -253,6 +271,17 @@ class AnnotationTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.path.write_text(text)
                 self.assertIsNone(annotations.box(self.path))
+
+    def test_the_text_is_each_line_written_in_an_excalidraw_drawing(self):
+        self.assertIsNone(annotations.text(self.path))
+        self.path.write_text(drawing())
+        self.assertEqual(annotations.text(self.path), '')
+        lines = '<g><text x="0" y="17" font-size="20px">Fish &amp; chips</text><text x="0" y="42"> </text>' \
+                '<text x="0" y="67">tomorrow?</text></g>'
+        self.path.write_text(drawing(extra=lines))
+        self.assertEqual(annotations.text(self.path), 'Fish & chips\ntomorrow?')
+        self.path.write_text(drawing(extra=lines).replace('<!-- svg-source:excalidraw -->', ''))
+        self.assertIsNone(annotations.text(self.path))
 
     def test_writing_replaces_whole_and_empty_removes(self):
         annotations.write(self.path, drawing())
