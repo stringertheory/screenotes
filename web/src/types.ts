@@ -15,7 +15,10 @@ interface FileCopy { path: string; modified: string }
 export interface Capture { url: string | null; captured: string | null; window: string | null; app: string | null; text: string | null }
 /** A note is a text file beside its screenshot; `file` is its path in the folder. */
 export interface Note { text: string; file: string }
-export interface Details { id: string; width: number; height: number; mime: string; size: number; taken: string | null; camera: string | null; root: string; source: 'folder' | 'photos'; files: FileCopy[]; preview: boolean; capture: Capture | null; note: Note | null }
+/** A drawing is an SVG beside its screenshot, `file` in the folder, linking to the screenshot `image` beside it. `box`
+ *  is the part of the screenshot's pixel grid it covers, and it and `modified` are null until something is drawn. */
+export interface Annotation { file: string; image: string; box: [number, number, number, number] | null; modified: number | null }
+export interface Details { id: string; width: number; height: number; mime: string; size: number; taken: string | null; camera: string | null; root: string; source: 'folder' | 'photos'; files: FileCopy[]; preview: boolean; capture: Capture | null; note: Note | null; annotation: Annotation | null }
 /** `received` and `size` are bytes, sent while the model downloads. */
 export interface SearchStatus { state: 'idle' | 'downloading' | 'loading' | 'indexing' | 'ready' | 'error'; indexed: number; total: number; downloaded: boolean; received?: number; size?: number; error?: string }
 /** Visual queries can be answered: some images are prepared. */

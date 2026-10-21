@@ -7,6 +7,7 @@ import unittest
 
 from PIL import Image
 
+from server import annotations
 from server.library import Library
 from server.screenotate import captured_at, parse
 from server.semantic import Encoder
@@ -126,6 +127,25 @@ class ScreenotateFolderTests(unittest.TestCase):
         self.assertEqual(len(self.ids('pen plotted')), 2)
         self.assertEqual(self.ids('"plotted map'), [map_id])
 
+    def test_a_drawing_is_an_svg_beside_the_png_it_shows_and_links_to(self):
+        image = self.save('Shot', png())
+        self.scan()
+        image_id = self.library.pictures({})['items'][0]['id']
+        self.assertEqual(self.library.details(image_id)['annotation'], {'file': 'Shot.svg', 'image': 'Shot.html', 'box': None, 'modified': None})
+        (self.folder / 'Shot.png').write_bytes(image)
+        self.scan()
+        self.assertEqual(self.library.annotation(image_id)['image'], 'Shot.png')
+        self.assertIsNone(self.library.annotation_file(image_id))
+        saved = self.library.save_annotation(image_id, drawing())
+        self.assertEqual((saved['file'], saved['image'], saved['box']), ('Shot.svg', 'Shot.png', [-10, -5, 52, 34]))
+        self.assertEqual(self.library.annotation_file(image_id), self.folder / 'Shot.svg')
+        self.assertEqual(self.library.details(image_id)['annotation'], saved)
+        # The drawing is beside the screenshot, not one of the screenshots the scanner lists.
+        self.assertEqual(self.scan()['found'], 2)
+        self.assertEqual(len(self.library.pictures({})['items']), 1)
+        self.assertIsNone(self.library.save_annotation(image_id, '')['box'])
+        self.assertEqual(sorted(path.name for path in self.folder.iterdir()), ['Shot.html', 'Shot.png'])
+
     def test_a_note_is_a_text_file_beside_the_screenshot_and_blank_removes_it(self):
         image = self.save('Screenshot C', png())
         (self.folder / 'Screenshot C.png').write_bytes(image)
@@ -187,3 +207,46 @@ class ScreenotateFolderTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def drawing(box='-10 -5 52 34', extra=''):
+    """An SVG as the page saves it from Excalidraw."""
+    return (f'<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="{box}" width="52" height="34">'
+            f'<!-- svg-source:excalidraw --><metadata></metadata><defs></defs>{extra}</svg>')
+
+
+class AnnotationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.path = Path(self.temp.name) / 'Shot.svg'
+
+    def test_the_box_is_the_viewbox_of_an_excalidraw_svg_only(self):
+        self.assertIsNone(annotations.box(self.path))
+        self.path.write_text(drawing('-10 -5.5 52 34', extra='<g>' + 'x' * 10_000 + '</g>'))
+        self.assertEqual(annotations.box(self.path), [-10, -5.5, 52, 34])
+        for text in (drawing('0 0 0 34'), drawing('0 0 a b'), drawing().replace('<!-- svg-source:excalidraw -->', ''),
+                     '<svg xmlns="http://www.w3.org/2000/svg"><!-- svg-source:excalidraw --></svg>'):
+            with self.subTest(text=text):
+                self.path.write_text(text)
+                self.assertIsNone(annotations.box(self.path))
+
+    def test_writing_replaces_whole_and_empty_removes(self):
+        annotations.write(self.path, drawing())
+        self.assertEqual(self.path.read_text(), drawing())
+        annotations.write(self.path, drawing('0 0 9 9'))
+        self.assertEqual(annotations.box(self.path), [0, 0, 9, 9])
+        annotations.write(self.path, '')
+        self.assertFalse(self.path.exists())
+        self.assertEqual(list(Path(self.temp.name).iterdir()), [])
+
+    def test_only_excalidraw_svgs_are_written_or_replaced(self):
+        for text in ('<html></html>', '<svg xmlns="http://www.w3.org/2000/svg"></svg>', None, 'x' * (annotations.ANNOTATION_LIMIT + 1)):
+            with self.subTest(text=text and text[:40]), self.assertRaises(ValueError):
+                annotations.write(self.path, text)
+        self.assertFalse(self.path.exists())
+        self.path.write_text('<svg xmlns="http://www.w3.org/2000/svg"><circle r="4"/></svg>')
+        for text in (drawing(), ''):
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, 'left alone'):
+                annotations.write(self.path, text)
+        self.assertIn('circle', self.path.read_text())

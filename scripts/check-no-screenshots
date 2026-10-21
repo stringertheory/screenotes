@@ -31,6 +31,11 @@ SHAPES = [re.compile(rb'^BM.{4}\x00{4}', re.S), re.compile(rb'^.{4}ftyp(heic|hei
 # An image written inside a text file, as a Screenotate page holds its screenshot.
 EMBEDDED = re.compile(rb'data:image/[a-z+.-]+;base64,[A-Za-z0-9+/=\s]{200,}')
 LARGEST = 1_000_000
+# The built scripts, which Vite names by hash. Libraries in them can be large, and some hold a tiny image of their own,
+# as pica holds a JPEG to test how the browser reads EXIF; anything the size of a screenshot is still refused.
+BUILT = re.compile(r'dist/assets/[^/]+\.js')
+BUILT_LARGEST = 3_000_000
+BUILT_EMBEDDED_LARGEST = 2_000
 
 
 def problems(path: str, data: bytes) -> list[str]:
@@ -42,10 +47,12 @@ def problems(path: str, data: bytes) -> list[str]:
         found.append('is an image or page by its name')
     if any(data.startswith(magic) for magic in MAGIC) or any(shape.match(data) for shape in SHAPES):
         found.append('is an image by its contents')
-    if EMBEDDED.search(data):
+    built = BUILT.fullmatch(path)
+    if any(not built or len(match.group(0)) > BUILT_EMBEDDED_LARGEST for match in EMBEDDED.finditer(data)):
         found.append('has an image embedded in it')
-    if len(data) > LARGEST:
-        found.append(f'is {len(data):,} bytes, over the {LARGEST:,} limit')
+    largest = BUILT_LARGEST if built else LARGEST
+    if len(data) > largest:
+        found.append(f'is {len(data):,} bytes, over the {largest:,} limit')
     return found
 
 

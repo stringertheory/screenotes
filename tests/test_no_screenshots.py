@@ -63,6 +63,14 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(check.problems('data.json', b'0' * (check.LARGEST + 1)),
                          [f'is {check.LARGEST + 1:,} bytes, over the {check.LARGEST:,} limit'])
 
+    def test_built_scripts_may_be_large_and_hold_tiny_images_but_not_screenshots(self):
+        tiny = b'var probe="data:image/jpeg;base64,' + b'A' * 800 + b'";'
+        self.assertEqual(check.problems('dist/assets/pica-BQoUpkxG.js', tiny + b'0' * (check.LARGEST + 1)), [])
+        self.assertEqual(check.problems('dist/assets/index-wQ7eQ060.js', tiny.replace(b'A' * 800, b'A' * 5000)), ['has an image embedded in it'])
+        self.assertEqual(check.problems('web/src/probe.js', tiny), ['has an image embedded in it'])
+        self.assertEqual(check.problems('dist/assets/big.js', b'0' * (check.BUILT_LARGEST + 1)),
+                         [f'is {check.BUILT_LARGEST + 1:,} bytes, over the {check.BUILT_LARGEST:,} limit'])
+
     def test_the_apps_own_images_and_ordinary_text_pass(self):
         self.assertEqual(check.problems('public/favicon-32.png', png()), [])
         self.assertEqual(check.problems('server/screenotate.py', b'SIGNATURE = b"Screenotate"\n'), [])

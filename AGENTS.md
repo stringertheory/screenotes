@@ -20,6 +20,17 @@ fixes still merge: `git fetch upstream && git merge upstream/main`.
   aren't followed: a `.txt` with no screenshot of its name is ignored. Photos libraries have no notes.
 - `scripts/extract-pngs FOLDER [--write]` (run with `.venv/bin/python`): writes each page's embedded PNG, byte for
   byte, as `<name>.png` beside it, so its image id and note stay; never overwrites. Counts only without `--write`.
+- `server/annotations.py`, `Library.annotation`/`save_annotation` and `web/src/Annotate.tsx`: a drawing is
+  Excalidraw's SVG export (scene embedded, so excalidraw.com reopens it) as `<name>.svg` beside the screenshot, paired
+  by name like a note. The screenshot is one locked image element (id and file id `screenshot`) whose file the page
+  fills with the PNG on opening and with the PNG's relative name on saving, so the SVG links to it and never holds
+  it. The saved SVG is rewritten into the screenshot's pixel grid (`viewBox` may reach past its edges), which is how
+  the viewer's `Drawn` lays it over the image; screenshots 2000 px or more are placed at half size in the scene, so
+  Excalidraw's sizes read as points. The server only writes, and never replaces or deletes, SVGs marked
+  `svg-source:excalidraw`. App.tsx's paste and drop searches stand aside while `.annotator` is open. Excalidraw is
+  lazy-loaded; its fonts but the 12 MB CJK one are copied to `dist/excalidraw/fonts` by `vite.config.ts`. Its glyph
+  subsetting needs `eval` under our CSP, so it embeds whole font slices instead, and it logs CSP errors for its
+  esm.sh font fallback, which are harmless.
 - `server/menubar.py` and `web/src/Menu.tsx`: `--menubar` runs an NSStatusItem whose NSPopover holds a WKWebView of
   `/menu`. The page sends `{action, value}` string messages through `window.webkit.messageHandlers.screenotes`;
   `menubar.action()` validates them and opens `/?image=<id>` or `/?mode=name&q=…` in the default browser. With a
@@ -77,7 +88,8 @@ Never print screenshot contents (OCR text, window titles, URLs) from the real fo
 The repo is public, and no screenshot may ever be committed: not the real folder's, and not a copy made to reproduce
 a bug. Test images are made in code. `scripts/check-no-screenshots` runs as the pre-commit hook (`git config
 core.hooksPath .githooks`) and in the tests; a new image the app itself needs goes in its `ALLOWED` list and in
-`.gitignore`. Keep personal paths, hostnames and labels out of committed files: the login item's plist is made from
+`.gitignore`. Built scripts in `dist/assets/` (hashed names) may be up to 3 MB and hold
+embedded images under 2,000 characters, such as the JPEG pica, used by Excalidraw, probes EXIF with. Keep personal paths, hostnames and labels out of committed files: the login item's plist is made from
 `scripts/login-item.plist.in` by `scripts/install-login-item`.
 
 ## Merging Orchard

@@ -2,7 +2,7 @@
   "name": "orchard-photos",
   "private": true,
   "license": "MIT",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -12,6 +12,7 @@
     "lint": ".venv/bin/ruff check . && eslint --max-warnings 0 . && tsc --noEmit -p . && tsc --noEmit -p tests/ui"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

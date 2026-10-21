@@ -19,6 +19,7 @@ import urllib.request
 import webbrowser
 
 from server import menubar, photos
+from server.annotations import ANNOTATION_LIMIT
 from server.diagnostics import LAST_ERROR, report
 from server.library import IMAGE_ID, Library
 from server.semantic import Encoder
@@ -36,10 +37,11 @@ UPLOAD_LIMIT = 20 * 1024 * 1024
 FORM_LIMIT = 64 * 1024
 IMMUTABLE = 'private, max-age=31536000, immutable'
 HOSTS = ('127.0.0.1', 'localhost', '[::1]')
-# Sent with every response. The page runs only its own scripts, and no page can frame it.
+# Sent with every response. The page runs only its own scripts, and no page can frame it. The drawing editor shows
+# pasted images, and the fonts in a drawing, as data: URLs.
 SECURITY_HEADERS = {
-    'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; object-src 'none'; "
-                               "base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; "
+                               "font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     'X-Frame-Options': 'DENY',
     'X-Content-Type-Options': 'nosniff',
 }
@@ -307,9 +309,9 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError('Choose an image smaller than 20 MB.' if limit == UPLOAD_LIMIT else 'The request was empty or too large.')
         return self.rfile.read(size)
 
-    def form(self):
+    def form(self, limit=FORM_LIMIT):
         try:
-            data = json.loads(self.body(FORM_LIMIT))
+            data = json.loads(self.body(limit))
         except ValueError:
             raise ValueError('The request could not be read.') from None
         if not isinstance(data, dict):
@@ -429,6 +431,10 @@ class Handler(BaseHTTPRequestHandler):
             self.json({'revealed': True})
         elif action == 'note' and post:
             self.json({'note': library.save_note(image_id, self.form().get('text', ''))})
+        elif action == 'annotation' and post:
+            self.json({'annotation': library.save_annotation(image_id, self.form(ANNOTATION_LIMIT * 2).get('svg', ''))})
+        elif action == 'annotation':
+            self.file(library.annotation_file(image_id), mime='image/svg+xml', cache='no-cache')
         elif action == 'display' and not post:
             path = library.display(image_id)
             self.file(path, mime=details['mime'] if not details['preview'] else 'image/jpeg')

@@ -18,6 +18,8 @@ In the menu bar, the window and the browser tab, the app is called **Screenshots
 - **Browse.** Every screenshot in the folder, in a grid by date. Click one to see it full size, with the app, window
   and URL it came from, the text Screenotate read from it, and your note.
 - **Write notes.** Each screenshot has a note box. Notes are saved as you type, and searching finds them too.
+- **Draw on them.** Draw on it opens the screenshot in [Excalidraw](https://excalidraw.com): arrows, boxes, text,
+  pasted images. The drawing shows over the screenshot from then on.
 - **Search by text.** Type a few words. A screenshot matches when every word appears somewhere in its screen text,
   window title, app, URL, file name or note.
 - **Search by appearance.** Optionally, describe what a screenshot looked like ("a bar chart", "a map"), or find
@@ -26,7 +28,7 @@ In the menu bar, the window and the browser tab, the app is called **Screenshots
 - **See them on a map.** Screenshots laid out by how they look, so similar ones sit together. This also needs the
   appearance download.
 
-Screenotes never changes, moves or deletes your screenshots. The only files it writes are your notes.
+Screenotes never changes, moves or deletes your screenshots. The only files it writes are your notes and drawings.
 
 ## Getting started
 
@@ -77,6 +79,10 @@ run `scripts/install-login-item` again to restart it on the new version.
   is `Screenshot 2022-01-25 at 11.33.14 PM.txt`. You can read or edit them in any text editor. Backing up the
   screenshot folder backs up the notes too. A note goes with its screenshot by name, so if you rename a screenshot in
   Finder, rename its `.txt` the same way.
+- **Your drawings** are SVG files next to the screenshots, paired by name the same way: `….svg`. The screenshot isn't
+  copied into the SVG, only linked, so opening the SVG in a browser shows the drawing over the screenshot beside it.
+  Images you paste in are kept inside the SVG. Dropping the SVG on [excalidraw.com](https://excalidraw.com) opens the
+  drawing to edit, though without the screenshot under it.
 - **Everything else** the app keeps, in `~/Library/Application Support/screenotes`, can be rebuilt, so you don't need
   to back it up: the thumbnails, the search index and the appearance model.
 
@@ -87,7 +93,7 @@ network, and it turns away requests from other websites. Nothing about your scre
 
 ## Credits
 
-Screenotes is built on [Orchard Photos](https://github.com/chaseleantj/orchard-photos), an app for browsing and searching a folder of photos. The grid, the appearance search and the map come from Orchard; Screenotes adds reading Screenotate's screenshots, the notes and the menu bar item. Orchard's own documentation is in
+Screenotes is built on [Orchard Photos](https://github.com/chaseleantj/orchard-photos), an app for browsing and searching a folder of photos. The grid, the appearance search and the map come from Orchard; Screenotes adds reading Screenotate's screenshots, the notes, the drawings and the menu bar item. Orchard's own documentation is in
 [`docs/`](docs/), starting with [`docs/orchard-readme.md`](docs/orchard-readme.md).
 
 ## Ideas for later

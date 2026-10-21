@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Copy, Download, FolderOpen, Images, ScanSearch, X, ZoomIn, ZoomOut } from 'lucide-react';
-import type { Details, Filters, Picture, Results } from './types';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, Copy, Download, FolderOpen, Images, PenLine, ScanSearch, X, ZoomIn, ZoomOut } from 'lucide-react';
+import type { Annotation, Details, Filters, Picture, Results } from './types';
 import NoteEditor from './Note';
 import { Disclosure } from './Panels';
+// Excalidraw is most of the page's weight, so it loads only when a drawing is opened.
+const Annotator = lazy(() => import('./Annotate'));
 import { dateLabel, downloadUrl, fileName, filterParams, folderOf, imageUrl, plural, post, request, sizeLabel, typeLabel } from './types';
 
 interface Props {
@@ -26,6 +28,7 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
   const [zoom, setZoom] = useState(false);
   const [copied, setCopied] = useState<{ id: string; note: string } | null>(null);
   // The grid shows one image per group of near-duplicates; the viewer can show any of them.
+  const [drawing, setDrawing] = useState(false);
   const [members, setMembers] = useState<Picture[]>([]);
   const [shown, setShown] = useState(0);
   const front = items[index];
@@ -46,7 +49,7 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
   // Only another image reloads the details: reloading them would also replace the note being typed.
   useEffect(() => {
     const controller = new AbortController();
-    setZoom(false); setFailed(false); setError(''); setDetails(null);
+    setZoom(false); setFailed(false); setError(''); setDetails(null); setDrawing(false);
     request<Details>(`/api/images/${item.id}`, { signal: controller.signal }).then(setDetails).catch(e => { if (e.name !== 'AbortError') setError(e.message); });
     return () => controller.abort();
   }, [item.id]);
@@ -63,6 +66,8 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
   }, [front.id, front.group, front.members, filters]);
   const itemId = item.id;
   const saved = useCallback((note: string | null) => onNote(itemId, note), [onNote, itemId]);
+  const drawn = (annotation: Annotation) => setDetails(current => current && current.id === itemId ? { ...current, annotation } : current);
+  const annotation = details?.annotation;
   const show = async (path: string) => { setError(''); try { await post(`/api/images/${item.id}/reveal`, { path }); } catch (e) { setError((e as Error).message); } };
   const copy = async () => {
     const id = item.id;
@@ -82,7 +87,7 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
   const otherDate = item.dated === 'taken' ? file && `Modified ${dateLabel(file.modified, true)}` : details?.taken && `Taken ${dateLabel(details.taken, true)}`;
   const parts = folder ? folder.split('/') : [rootName];
   const crumbs = (parts.length > CRUMBS ? ['…', ...parts.slice(-CRUMBS)] : parts).join(' › ');
-  return <dialog ref={dialog} tabIndex={-1} className="viewer" aria-label="Image viewer" onCancel={onClose} onKeyDown={e => {
+  return <dialog ref={dialog} tabIndex={-1} className="viewer" aria-label="Image viewer" onCancel={e => { if (drawing) e.preventDefault(); else onClose(); }} onKeyDown={e => {
     if (e.key === 'ArrowRight' && (index < items.length - 1 || hasMore) && !loadingMore) { e.preventDefault(); onChange(index + 1); }
     if (e.key === 'ArrowLeft' && index > 0 && !loadingMore) { e.preventDefault(); onChange(index - 1); }
     if (e.key === 'ArrowDown' && shown < members.length - 1) { e.preventDefault(); setShown(shown + 1); }
@@ -99,7 +104,9 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
         <button className="icon-button" aria-label="Close image" title="Close" onClick={onClose}><X /></button>
       </div></header>
       <div className={`image-stage ${zoom ? 'zoomed' : ''}`}>
-        {failed ? <div className="empty"><p>This image could not be shown. The file may have moved or changed.</p><button className="text-button secondary" onClick={() => setFailed(false)}>Retry</button></div> : <img key={item.id} src={imageUrl(item.id, 'display')} alt={fileName(item.path)} onError={() => setFailed(true)} onClick={() => setZoom(!zoom)} />}
+        {failed ? <div className="empty"><p>This image could not be shown. The file may have moved or changed.</p><button className="text-button secondary" onClick={() => setFailed(false)}>Retry</button></div>
+          : annotation?.box ? <Drawn id={item.id} width={item.width} height={item.height} annotation={annotation} label={fileName(item.path)} onError={() => setFailed(true)} onClick={() => setZoom(!zoom)} />
+          : <img key={item.id} src={imageUrl(item.id, 'display')} alt={fileName(item.path)} onError={() => setFailed(true)} onClick={() => setZoom(!zoom)} />}
       </div>
       <aside className="image-details">
         <div className="detail-summary">
@@ -114,6 +121,7 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
         {details ? <NoteEditor key={item.id} id={item.id} note={details.note} onSaved={saved} /> : <div className="note-placeholder" />}
         <div className="detail-actions">
           {onSimilar && <button className="text-button" onClick={() => onSimilar(item.id)}><ScanSearch />Find similar</button>}
+          {annotation && <button className="text-button" onClick={() => setDrawing(true)}><PenLine />{annotation.box ? 'Edit drawing' : 'Draw on it'}</button>}
           <button className="text-button" onClick={copy}>{copied?.id === item.id ? <Check /> : <Copy />}Copy image</button>
           <a className="text-button" href={downloadUrl(item.id, item.path)} download><Download />Download original</a>
           <button className="text-button" onClick={() => show(item.path)}><RevealIcon />{reveal}</button>
@@ -132,7 +140,23 @@ export default function Viewer({ items, index, total, hasMore, loadingMore, page
         </Disclosure>}
       </aside>
     </div>
+    {drawing && annotation && <Suspense fallback={<div className="annotator"><div className="empty"><p>Opening…</p></div></div>}>
+      <Annotator id={item.id} width={item.width} height={item.height} annotation={annotation} onSaved={drawn} onClose={() => { setDrawing(false); dialog.current?.focus(); }} />
+    </Suspense>}
   </dialog>;
+}
+
+/** A screenshot with its drawing over it. The drawing is drawn as an image, so a link in it to the screenshot isn't
+ *  followed, and can reach past the screenshot's edges. */
+function Drawn({ id, width, height, annotation, label, onError, onClick }: { id: string; width: number; height: number; annotation: Annotation; label: string; onError: () => void; onClick: () => void }) {
+  const [x, y, w, h] = annotation.box!;
+  const left = Math.min(0, x), top = Math.min(0, y), right = Math.max(width, x + w), bottom = Math.max(height, y + h);
+  // Fills the stage up to its own size, and the viewBox fits it in, as an image is fitted.
+  return <svg className="drawn" role="img" aria-label={label} viewBox={`${left} ${top} ${right - left} ${bottom - top}`} width={right - left} height={bottom - top}
+    style={{ maxWidth: right - left, maxHeight: bottom - top }} onClick={onClick}>
+    <image href={imageUrl(id, 'display')} width={width} height={height} preserveAspectRatio="none" onError={onError} />
+    <image href={`/api/images/${id}/annotation?v=${annotation.modified}`} x={x} y={y} width={w} height={h} preserveAspectRatio="none" />
+  </svg>;
 }
 
 /** The image as a PNG, the one format every browser can put on the clipboard, scaled down only past what a canvas holds. */

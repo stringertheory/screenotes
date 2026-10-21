@@ -232,6 +232,15 @@ class HandlerTests(unittest.TestCase):
                 self.assertEqual(handler.json.call_args.args[1], 400)
                 handler.server.app.current.return_value.pictures.assert_not_called()
 
+    def test_a_drawing_is_saved_from_a_large_body_and_served_as_an_svg(self):
+        body = json.dumps({'svg': '<svg>' + 'x' * 200_000 + '</svg>'}).encode()
+        image = f'/api/images/{"a" * 64}/annotation'
+        handler = self.dispatch(image, {**JSON, 'Content-Length': str(len(body))}, post=True, body=body)
+        handler.server.app.current.return_value.save_annotation.assert_called_once_with('a' * 64, json.loads(body)['svg'])
+        handler = self.dispatch(image)
+        library = handler.server.app.current.return_value
+        handler.file.assert_called_once_with(library.annotation_file.return_value, mime='image/svg+xml', cache='no-cache')
+
     def test_opening_a_folder_reads_its_path_from_the_body(self):
         body = json.dumps({'path': '/Volumes/Photos'}).encode()
         handler = self.dispatch('/api/folder', {**JSON, 'Content-Length': str(len(body))}, post=True, body=body)

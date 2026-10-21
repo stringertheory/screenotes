@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from PIL import Image
 
-from server import notes, photos, screenotate
+from server import annotations, notes, photos, screenotate
 from server.atlas import Atlas
 from server.cache import connect, extracted_path, preview_path, thumbnail_path, while_open
 from server.groups import Groups
@@ -309,15 +309,19 @@ class Library:
             capture = db.execute('SELECT url, captured, window, app, text FROM captures WHERE image_id=?', (image_id,)).fetchone()
         return {**dict(image), 'root': photos.NAME if self.photos else str(self.folder), 'source': 'photos' if self.photos else 'folder',
                 'files': files, 'preview': image['mime'] not in WEB_TYPES, 'capture': dict(capture) if capture else None,
-                'note': self.note(image_id)}
+                'note': self.note(image_id), 'annotation': self.annotation(image_id)}
 
-    def note_files(self, image_id) -> list[Path]:
-        """Where an image's note can be: beside each of its files, the one it is shown by first."""
+    def shown_files(self, image_id) -> list[str]:
+        """An image's files in the folder, the one it is shown by first."""
         if self.photos:
             return []
         with connect(self.directory, rows=True) as db:
             rows = db.execute(f'SELECT path FROM files f WHERE image_id=? ORDER BY {PAGE_LAST}, path', (image_id,)).fetchall()
-        return list(dict.fromkeys(notes.note_path(self.folder, row['path']) for row in rows))
+        return [row['path'] for row in rows]
+
+    def note_files(self, image_id) -> list[Path]:
+        """Where an image's note can be: beside each of its files, the one it is shown by first."""
+        return list(dict.fromkeys(notes.note_path(self.folder, path) for path in self.shown_files(image_id)))
 
     def note(self, image_id):
         """An image's note as {'text', 'file'}, file being its path in the folder, or None."""
@@ -350,6 +354,38 @@ class Library:
         with self._tiles_lock:
             self._tiles = None
         return self.note(image_id)
+
+    def annotation_place(self, image_id) -> tuple[Path, str] | None:
+        """Where an image's drawing is kept, and the name of the screenshot beside it that the drawing links to: the
+        drawing it already has, or else beside the file the image is shown by."""
+        files = self.shown_files(image_id)
+        places = [(annotations.annotation_path(self.folder, path), Path(path).name) for path in files]
+        return next((place for place in places if place[0].is_file()), places[0] if places else None)
+
+    def annotation(self, image_id):
+        """An image's drawing as {'file', 'image', 'box', 'modified'}: `file` its path in the folder, `image` the
+        screenshot it links to, and `box` and `modified` None until there is a drawing. None for Photos."""
+        place = self.annotation_place(image_id)
+        if place is None:
+            return None
+        path, image = place
+        box = annotations.box(path)
+        return {'file': path.relative_to(self.folder).as_posix(), 'image': image, 'box': box,
+                'modified': path.stat().st_mtime_ns if box else None}
+
+    def annotation_file(self, image_id) -> Path | None:
+        place = self.annotation_place(image_id)
+        return place[0] if place and place[0].is_file() else None
+
+    def save_annotation(self, image_id, svg):
+        """Write an image's drawing beside it. An empty SVG removes the drawing."""
+        if self.photos:
+            raise ValueError('Drawings are kept beside screenshots in a folder, so photos in Photos have none.')
+        place = self.annotation_place(image_id)
+        if place is None:
+            raise ValueError('Choose an image from this folder.')
+        annotations.write(place[0], svg)
+        return self.annotation(image_id)
 
     def read_notes(self):
         """Read every note beside the folder's images into the search index."""

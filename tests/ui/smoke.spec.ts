@@ -1,3 +1,5 @@
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FIXTURE } from './server';
 
@@ -165,4 +167,86 @@ test('opens a folder and browses, filters, maps and searches it', async ({ page 
     await note.fill('');
     await note.blur();
   });
+});
+
+// After the smoke test, which starts from the welcome screen, since both use the one server.
+test('draws on a screenshot in Excalidraw and keeps the drawing as an SVG beside it', async ({ page }) => {
+  const folder = process.env.ORCHARD_UI_PHOTOS!;
+  const drawing = join(folder, 'red.svg');
+  rmSync(drawing, { force: true });
+  const problems: string[] = [];
+  // Excalidraw lists a CDN after each of its fonts, which the page's policy blocks. Chrome reports every blocked source
+  // as the font is declared, though the copy served here loads first.
+  page.on('console', message => { if (message.type() === 'error' && !/^Loading the font 'https:\/\/esm\.sh\//.test(message.text())) problems.push(message.text()); });
+  page.on('pageerror', error => problems.push(error.message));
+
+  await page.request.post('/api/folder', { data: { path: folder } });
+  // The folder is scanned in the background.
+  let id = '';
+  await expect.poll(async () => (id = (await (await page.request.get('/api/images?q=red&mode=name')).json()).items?.[0]?.id ?? '')).not.toBe('');
+  await page.goto(`/?image=${id}`);
+  const viewer = page.getByRole('dialog', { name: 'Image viewer' });
+  const canvas = page.locator('.annotator canvas.interactive');
+
+  await test.step('draw a rectangle that reaches past the screenshot and save it', async () => {
+    await viewer.getByRole('button', { name: 'Draw on it' }).click();
+    await expect(canvas).toBeVisible();
+    const box = (await canvas.boundingBox())!;
+    // The screenshot is fitted to the window, so the far corner is past its edge.
+    await page.keyboard.press('r');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 80, box.y + box.height - 8, { steps: 5 });
+    await page.mouse.up();
+    // Escape belongs to the editor, which deselects; the viewer stays open.
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await expect(canvas).toBeVisible();
+    await page.getByRole('button', { name: 'Done' }).click();
+    await expect(canvas).toBeHidden();
+  });
+
+  await test.step('the SVG links to the screenshot, holds the scene, and is in its pixels', async () => {
+    const svg = readFileSync(drawing, 'utf8');
+    expect(svg).toContain('<!-- svg-source:excalidraw -->');
+    expect(svg).toContain('payload-type:application/vnd.excalidraw+json');
+    expect(svg).toContain('href="red.png"');
+    expect(svg).not.toContain('data:image/png');
+    const [left, top, width, height] = svg.match(/viewBox="([^"]+)"/)![1].split(' ').map(Number);
+    expect(left).toBeLessThan(48);
+    expect(top).toBeLessThan(48);
+    expect(left + width).toBeGreaterThan(48);
+    expect(top + height).toBeGreaterThan(48);
+  });
+
+  await test.step('the viewer shows the drawing over the screenshot', async () => {
+    await expect(viewer.locator('svg.drawn image')).toHaveCount(2);
+    await viewer.getByRole('button', { name: 'Edit drawing' }).click();
+    await expect(canvas).toBeVisible();
+    // Opened unchanged, it closes without asking.
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(canvas).toBeHidden();
+  });
+
+  await test.step('the drawing opens again from the SVG and saves the same', async () => {
+    const before = readFileSync(drawing, 'utf8').match(/viewBox="([^"]+)"/)![1];
+    await viewer.getByRole('button', { name: 'Edit drawing' }).click();
+    await expect(canvas).toBeVisible();
+    await page.getByRole('button', { name: 'Done' }).click();
+    await expect(canvas).toBeHidden();
+    expect(readFileSync(drawing, 'utf8').match(/viewBox="([^"]+)"/)![1]).toBe(before);
+  });
+
+  await test.step('clearing the drawing removes the SVG', async () => {
+    await viewer.getByRole('button', { name: 'Edit drawing' }).click();
+    await expect(canvas).toBeVisible();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('Delete');
+    await page.getByRole('button', { name: 'Done' }).click();
+    await expect(canvas).toBeHidden();
+    expect(existsSync(drawing)).toBe(false);
+    await expect(viewer.getByRole('button', { name: 'Draw on it' })).toBeVisible();
+  });
+
+  expect(problems).toEqual([]);
 });
