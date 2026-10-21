@@ -78,7 +78,9 @@ core.hooksPath .githooks`) and in the tests; a new image the app itself needs go
 ## Merging Orchard
 
 `git fetch upstream && git merge upstream/main`, never a rebase. Expect conflicts in `dist/` (take either side, then
-`npm run build`), `app.json` (keep ours) and wherever both edited the header (`App.tsx`, `styles.css`). Run every
+`npm run build`), `app.json` (keep ours) and wherever both edited the header (`App.tsx`, `styles.css`). Orchard's
+`.github/workflows/release.yml` is deleted here, since it builds and drafts Orchard-named releases for `v*` tags (its
+description in `docs/development.md` is Orchard's); if a merge brings changes to it, keep it deleted with `git rm`. Run every
 check before committing the merge.
 
 Never rewrite Orchard's commits: some are GitHub-signed merges, and `git filter-repo` strips signatures by default,
