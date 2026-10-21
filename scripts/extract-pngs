@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Write the screenshot each Screenotate page embeds as a PNG beside it: scripts/extract-pngs FOLDER [--write]
+
+Without --write it only counts what it would do. `<name>.png` gets exactly the bytes the page embeds, so the scanner,
+which hashes the embedded PNG, sees one image as before, and its note and id stay. Nothing is ever overwritten or
+removed: a page with any `<name>.png` beside it is left alone, and each PNG is written to a hidden temporary file and
+then linked into place, which fails if the name was taken meanwhile. The PNG gets the page's modification time.
+
+Counts only, with --list for the paths. Run it with the app's Python: .venv/bin/python scripts/extract-pngs FOLDER
+"""
+import argparse
+import os
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from server import screenotate  # noqa: E402
+
+OUTCOMES = {
+    'write': 'pages without a PNG beside them',
+    'paired': 'pages with the same PNG beside them already',
+    'different': 'pages beside a different PNG of their name, left alone',
+    'empty': 'pages with no screenshot inside, left alone',
+    'unreadable': 'pages that could not be read',
+    'failed': 'PNGs that could not be written',
+}
+
+
+def pages(folder: Path):
+    """Every Screenotate page below folder, with the names in its folder. Hidden entries and Photos libraries are
+    skipped, as the scanner skips them."""
+    for directory, folders, files in os.walk(folder):
+        folders[:] = [name for name in folders if not name.startswith('.') and not name.endswith('.photoslibrary')]
+        names = {name.lower(): name for name in files}
+        for name in files:
+            path = Path(directory) / name
+            if not name.startswith('.') and path.suffix.lower() == '.html' and is_capture(path):
+                yield path, names
+
+
+def is_capture(path: Path) -> bool:
+    try:
+        with open(path, 'rb') as stream:
+            return screenotate.is_capture(stream.read(screenotate.HEAD_BYTES))
+    except OSError:
+        return False
+
+
+def check(page: Path, names: dict) -> tuple[str, bytes | None]:
+    """What to do with one page, and its screenshot when it has one."""
+    try:
+        capture = screenotate.parse(page.read_bytes())
+    except OSError:
+        return 'unreadable', None
+    if capture is None:
+        return 'empty', None
+    # Any capitalization of .png counts, since macOS folders usually ignore case and the scanner does too.
+    beside = names.get(f'{page.stem}.png'.lower())
+    if beside is None:
+        return 'write', capture['png']
+    try:
+        same = (page.parent / beside).read_bytes() == capture['png']
+    except OSError:
+        same = False
+    return ('paired' if same else 'different'), None
+
+
+def write(page: Path, png: bytes) -> bool:
+    """Write png as the page's .png, never replacing a file. Whether it was written."""
+    target = page.with_suffix('.png')
+    temporary = page.parent / f'.{target.name}.{os.getpid()}.tmp'
+    try:
+        with open(temporary, 'xb') as stream:
+            stream.write(png)
+            stream.flush()
+            os.fsync(stream.fileno())
+        status = page.stat()
+        os.utime(temporary, ns=(status.st_atime_ns, status.st_mtime_ns))
+        os.link(temporary, target)
+        return target.read_bytes() == png
+    except OSError:
+        return False
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument('folder', type=Path)
+    parser.add_argument('--write', action='store_true', help='write the PNGs, rather than only counting them')
+    parser.add_argument('--list', action='store_true', help='also print the path of every page, by outcome')
+    options = parser.parse_args(argv)
+    folder = options.folder.expanduser()
+    if not folder.is_dir():
+        parser.error(f'{folder} is not a folder')
+
+    found = {outcome: [] for outcome in OUTCOMES}
+    for page, names in pages(folder):
+        outcome, png = check(page, names)
+        if outcome == 'write' and options.write and not write(page, png):
+            outcome = 'failed'
+        found[outcome].append(page.relative_to(folder))
+
+    total = sum(len(paths) for paths in found.values())
+    print(f'{total} Screenotate pages in {folder}')
+    for outcome, paths in found.items():
+        if paths or outcome == 'write':
+            label = 'PNGs written, for ' + OUTCOMES[outcome] if outcome == 'write' and options.write else OUTCOMES[outcome]
+            print(f'  {len(paths):>6}  {label}')
+            if options.list:
+                for path in sorted(paths):
+                    print(f'          {path.as_posix()}')
+    if not options.write and found['write']:
+        print('Nothing was written. Run again with --write to write them.')
+    return 1 if found['failed'] else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

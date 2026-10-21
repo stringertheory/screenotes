@@ -18,6 +18,8 @@ fixes still merge: `git fetch upstream && git merge upstream/main`.
   saves go through a hidden temporary file and `os.replace`. `Library.notes` is only a search index (image id → text),
   read when the library opens and after every scan, so edits made outside the app show up on the next scan. Renames
   aren't followed: a `.txt` with no screenshot of its name is ignored. Photos libraries have no notes.
+- `scripts/extract-pngs FOLDER [--write]` (run with `.venv/bin/python`): writes each page's embedded PNG, byte for
+  byte, as `<name>.png` beside it, so its image id and note stay; never overwrites. Counts only without `--write`.
 - `server/menubar.py` and `web/src/Menu.tsx`: `--menubar` runs an NSStatusItem whose NSPopover holds a WKWebView of
   `/menu`. The page sends `{action, value}` string messages through `window.webkit.messageHandlers.screenotes`;
   `menubar.action()` validates them and opens `/?image=<id>` or `/?mode=name&q=…` in the default browser. With a
