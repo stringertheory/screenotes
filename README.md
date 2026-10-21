@@ -1,7 +1,7 @@
 # Screenotes
 
-Screenotes lets you look through, search and annotate the screenshots you take with
-[Screenotate](https://screenotate.com).
+Screenotes lets you look through, search, and annotate screenshots you take with
+[Screenotate](https://screenotate.com). The photo browsing and search is built on [Orchard](https://github.com/chaseleantj/orchard-photos).
 
 Screenotate saves each screenshot together with the text on the screen and where it came from: the app, the window
 title and, for web pages, the URL. Screenotes reads that folder and shows every screenshot in one place, newest first.
@@ -93,6 +93,17 @@ adds reading Screenotate's screenshots, the notes and the menu bar item. Orchard
 
 Screenotes is an independent project, not affiliated with or endorsed by Screenotate or its author. It only reads the
 files Screenotate saves.
+
+## Ideas for later
+
+- **Fuzzy text search**, so a typo or a partial word still finds a screenshot (SQLite FTS5 with the trigram
+  tokenizer, over screen text, titles, URL and notes).
+- **One search box** for both kinds of search: merge the text and appearance results into one list (reciprocal rank
+  fusion: each result scores `1/(60 + rank)` in each list, summed).
+- **Notes found by meaning**, not just their exact words (embed note text with the same model appearance search uses).
+- **A keyboard shortcut** to open the menu bar item from anywhere, like Screenotate's.
+- **One browser tab** reused for screenshots opened from the menu, instead of a new tab per click.
+- **Tidy up notes** whose screenshot was deleted, say 30 days after it's gone, so restoring from the Trash still works.
 
 ## For development
 
