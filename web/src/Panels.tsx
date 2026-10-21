@@ -232,23 +232,17 @@ export function FolderPanel({ status, anchor, onOpened, onClose }: { status: Sta
   </Panel>;
 }
 
-/** How the search bar searches. It opens from the bar itself and is the one place the mode is chosen. Until visual
- *  search can answer, choosing Appearance sets it up. */
-export function SearchMenu({ mode, search, model, anchor, onMode, onSetUp, onUpload, onClose }: { mode: SearchMode; search: SearchStatus | null; model: Model; anchor: HTMLElement | null; onMode: (mode: SearchMode) => void; onSetUp: () => void; onUpload: () => void; onClose: () => void }) {
+/** How the search bar searches, in controls beside it: text and notes, or appearance, and finding images like a
+ *  file. Until visual search can answer, choosing Appearance sets it up. */
+export function SearchControls({ mode, search, model, onMode, onSetUp, onUpload }: { mode: SearchMode; search: SearchStatus | null; model: Model; onMode: (mode: SearchMode) => void; onSetUp: () => void; onUpload: () => void }) {
   const ready = !!search && searchable(search);
   const busy = !!search && settingUp(search);
-  const option = (value: SearchMode, label: string) => <button className="text-button menu-item" aria-pressed={mode === value} onClick={() => { onMode(value); onClose(); }}><Check />{label}</button>;
-  return <Popover label="Search options" anchor={anchor} menu className="panel menu" onClose={onClose}>
-    <div role="group" aria-labelledby="search-by">
-      <div className="menu-label" id="search-by">Search by</div>
-      {option('name', 'Text and notes')}
-      {ready ? option('visual', 'Appearance') : <>
-        <button className="text-button menu-item" aria-pressed={false} aria-describedby="appearance-note" disabled={busy} onClick={() => { onSetUp(); onClose(); }}><Check />Appearance</button>
-        <div className="menu-note" id="appearance-note">{busy ? 'Getting ready. Progress shows under the search bar.' : search?.state === 'error' ? 'The last try failed. Choose it to try again.' : `Sets up visual search: a ${megabytes(model.size)} MB download, once.`}</div>
-      </>}
+  const setUp = busy ? 'Visual search is getting ready. Progress shows under the search bar.' : search?.state === 'error' ? 'Setting up visual search failed last time. Choose Appearance to try again.' : `Choosing Appearance sets up visual search: a ${megabytes(model.size)} MB download, once.`;
+  return <div className="search-controls">
+    <div className="segmented" role="radiogroup" aria-label="Search by">
+      <button type="button" role="radio" aria-checked={mode === 'name'} onClick={() => onMode('name')}>Text and notes</button>
+      <button type="button" role="radio" aria-checked={mode === 'visual'} disabled={busy} title={ready ? 'Search by describing what a screenshot looks like' : setUp} onClick={() => ready ? onMode('visual') : onSetUp()}>{busy ? 'Getting ready…' : 'Appearance'}</button>
     </div>
-    <hr className="menu-rule" />
-    <button className="text-button menu-item" disabled={!ready} onClick={() => { onClose(); onUpload(); }}><ImageIcon />Find images like a file…</button>
-    <div className="menu-note">{ready ? 'You can also drop or paste an image.' : 'Works once visual search is set up.'}</div>
-  </Popover>;
+    <button type="button" className="text-button like-file" disabled={!ready} title={ready ? 'Find images like a file. You can also drop or paste an image.' : 'Works once visual search is set up.'} onClick={onUpload}><ImageIcon />Like a file…</button>
+  </div>;
 }

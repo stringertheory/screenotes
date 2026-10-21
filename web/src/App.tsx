@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Search, SlidersHorizontal, Moon, Sun, Info, ChevronDown, X, LayoutGrid, ChartScatter, FolderOpen, Image as ImageIcon } from 'lucide-react';
+import { Search, SlidersHorizontal, Moon, Sun, Info, X, LayoutGrid, ChartScatter, FolderOpen, Image as ImageIcon } from 'lucide-react';
 import Gallery from './Gallery';
 import type { GalleryHandle } from './Gallery';
 import Timeline from './Timeline';
@@ -8,8 +8,7 @@ import Embedding from './Embedding';
 import Viewer from './Viewer';
 import { Progress, useRemaining } from './Progress';
 import { Activity } from './Activity';
-import { Lockup, Mark } from './Logo';
-import { FilterPanel, FolderChooser, FolderPanel, LibraryPanel, SearchMenu } from './Panels';
+import { FilterPanel, FolderChooser, FolderPanel, LibraryPanel, SearchControls } from './Panels';
 import { APP_NAME, IMAGE_DRAG, defaults, filterParams, imageUrl, isFiltered, plural, post, rangeLabel, readPreferences, readSearchMode, request, savePreferences, saveSearchMode, searchable, SET_UP, settingUp, typeLabel } from './types';
 import type { Picture, Results, SearchMode, Status, Timeline as TimelineData, View } from './types';
 const initial = readPreferences();
@@ -26,7 +25,7 @@ const PAGE_SIZE = 80;
 const MAX_PAGE = 2500;
 // UPLOAD_LIMIT on the server.
 const UPLOAD_LIMIT = 20 * 1024 * 1024;
-type PanelName = 'filters' | 'library' | 'folder' | 'search';
+type PanelName = 'filters' | 'library' | 'folder';
 type Asked = 'nothing' | 'name' | 'words' | 'image';
 // The count under the search bar. The map counts the matches it lights.
 function countLabel(asked: Asked, mapped: boolean, total: number, lit: number) {
@@ -290,18 +289,19 @@ export default function App() {
   useEffect(() => { if (search?.state !== 'error') setSeenError(''); else if (panel === 'library') setSeenError(search.error ?? ''); }, [search?.state, search?.error, panel]);
   return <div className={mapped && ready ? 'app map-view' : 'app'} onDragEnter={e => { if (ready && droppable(e)) { e.preventDefault(); dragDepth.current++; setDragging(true); } }} onDragOver={e => { if (!ready || !droppable(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setOverSearch(nearSearch(e.clientY)); }} onDragLeave={() => { dragDepth.current--; if (dragDepth.current <= 0) { setDragging(false); setOverSearch(false); } }} onDrop={e => { if (!ready) return; e.preventDefault(); dragDepth.current = 0; setDragging(false); setOverSearch(false); if (!nearSearch(e.clientY)) return; const id = e.dataTransfer.getData(IMAGE_DRAG); const file = e.dataTransfer.files[0]; if (IMAGE_ID.test(id)) findSimilar(id); else if (file) searchWithImage(file); }}>
     <header ref={headerRef} className="header">
-      <button className="wordmark" onClick={reset} aria-label={`${APP_NAME}, show every image`}><Lockup /><Mark className="compact-mark" /></button>
-      {ready && <form ref={anchors.search} className="search" data-drop={overSearch ? 'over' : dragging ? 'ready' : undefined} role="search" onSubmit={e => { e.preventDefault(); setSimilar(''); setUpload(null); setAskedMode(effectiveMode); setSubmitted(query.trim()); history.replaceState(null, '', query.trim() ? `?q=${encodeURIComponent(query.trim())}` : location.pathname); }}>
+      <button className="wordmark" onClick={reset} aria-label={`${APP_NAME}, show every image`}>{APP_NAME}</button>
+      {ready && <div className="search-area"><form ref={anchors.search} className="search" data-drop={overSearch ? 'over' : dragging ? 'ready' : undefined} role="search" onSubmit={e => { e.preventDefault(); setSimilar(''); setUpload(null); setAskedMode(effectiveMode); setSubmitted(query.trim()); history.replaceState(null, '', query.trim() ? `?q=${encodeURIComponent(query.trim())}` : location.pathname); }}>
         {reference && !referenceFailed ? <img className="search-reference" src={reference} alt="Image you are matching" onError={() => setReferenceFailed(true)} /> : reference ? <ImageIcon aria-label="Image you are matching" /> : <Search />}<label className="sr-only" htmlFor="search">Search images</label><input ref={searchRef} id="search" aria-keyshortcuts="/ Meta+K Control+K" value={query} placeholder={dragging ? 'Drop an image to find similar' : similar || upload ? 'Similar images' : effectiveMode === 'visual' ? 'Describe an image, or drop one' : 'Search text and notes'} onChange={e => setQuery(e.target.value)} />
         {(query || searching) && <button className="icon-button" type="button" aria-label="Clear search" onClick={clearSearch}><X /></button>}
-        <button className="icon-button" type="button" aria-label="Search options" title="Search options" aria-haspopup="dialog" aria-expanded={panel === 'search'} onClick={() => setPanel('search')}><ChevronDown /></button>
-      </form>}
+      </form>
+        {status && <SearchControls mode={effectiveMode} search={search} model={status.model} onMode={next => { setMode(next); saveSearchMode(next); if (submitted) setAskedMode(next); searchRef.current?.focus(); }} onSetUp={() => { setMode('visual'); saveSearchMode('visual'); void setUpSearch(); }} onUpload={() => uploadRef.current?.click()} />}
+      </div>}
       <div className="header-actions">{ready && <><div className="view-switch" role="group" aria-label="View"><button className="text-button" aria-pressed={!mapped} aria-label="Grid" title="Grid" onClick={() => setView('grid')}><LayoutGrid /><span>Grid</span></button><button className="text-button" aria-pressed={mapped} aria-label="Map" title="Map by appearance" onClick={() => setView('map')}><ChartScatter /><span>Map</span></button></div><button ref={anchors.filters} className={filtered ? 'text-button filter-on' : 'text-button'} aria-label={filtered ? 'Filters, on' : 'Filters'} title={filtered ? 'Filters are on' : 'Filters'} aria-expanded={panel === 'filters'} onClick={() => setPanel('filters')}><SlidersHorizontal /><span>Filter</span></button></>}{ready && <button ref={anchors.library} className="icon-button" aria-label="Info" title="Info" aria-expanded={panel === 'library'} onClick={() => setPanel('library')}><Info /></button>}<button className="icon-button" aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} title={theme === 'light' ? 'Dark mode' : 'Light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon /> : <Sun />}</button></div>
     </header>
     {ready && <div className="library-meta"><p aria-live="polite">{loading || loadingMatches ? 'Finding images…' : error && !items.length ? 'No results' : subtitle}{scope}</p>{library && <Activity library={library} gathering={!!gathering} hideError={!!seenError && seenError === search?.error} onOpen={() => setPanel('library')} />}<button ref={anchors.folder} className="text-button folder-button" title={`${folder!.path}. Choose another folder`} aria-expanded={panel === 'folder'} onClick={() => setPanel('folder')}><FolderOpen /><span>{folder!.name}</span></button></div>}
     <main aria-busy={loading} data-timeline={timelineShown || undefined}>
       {offline && <div className="notice error" role="alert"><span>{APP_NAME} is not responding. If you quit it or closed its Terminal window, start it again.</span><button className="text-button secondary" onClick={refreshStatus}>Retry</button></div>}
-      {status && !folder ? <div className="empty welcome"><Mark className="welcome-mark" /><h1>Choose a folder of images</h1><p>{APP_NAME} shows every image inside it, including subfolders, and keeps its own cache. Your files are never changed.</p>{status.platform === 'darwin' && !status.photos && <p>Apple Photos libraries are skipped. Export photos to a folder to include them.</p>}<FolderChooser status={status} offerSetup={!status.model.present} onOpened={applyStatus} onSetUp={setUpSearch} /></div>
+      {status && !folder ? <div className="empty welcome"><h1>Choose a folder of images</h1><p>{APP_NAME} shows every image inside it, including subfolders, and keeps its own cache. Your files are never changed.</p>{status.platform === 'darwin' && !status.photos && <p>Apple Photos libraries are skipped. Export photos to a folder to include them.</p>}<FolderChooser status={status} offerSetup={!status.model.present} onOpened={applyStatus} onSetUp={setUpSearch} /></div>
       : !ready ? <div className="skeleton" aria-label="Loading images">{Array.from({ length: 5 }, (_, i) => <span key={i} />)}</div>
       : mapped ? <Embedding key={root} root={root} filters={filters} highlight={highlight} search={library!.search} model={status!.model} scanning={!!scanBusy} revision={revision + live} filtered={filtered} searching={searching} onOpen={setPicked} onSimilar={findSimilar} onCarry={carry} left={searchLeft} onSetUp={setUpSearch} onReset={reset} /> : <>
       {scan?.state === 'error' && <div className="notice error" role="alert"><span>{scan.error}{library!.counts.images ? ' Showing the images from the last scan.' : ''}</span><button className="text-button secondary" onClick={() => setPanel('folder')}>Choose folder</button></div>}
@@ -319,7 +319,6 @@ export default function App() {
     {panel === 'filters' && <FilterPanel filters={filters} anchor={anchor('filters')} onApply={setFilters} onClose={() => setPanel(null)} />}
     {panel === 'library' && status?.library && <LibraryPanel status={status} scanLeft={scanLeft} searchLeft={searchLeft} onSetUp={setUpSearch} shown={filtered && !searching && !loading ? total : null} narrowed={filtered || searching} anchor={anchor('library')} onClose={() => setPanel(null)} onRefresh={refreshStatus} />}
     {panel === 'folder' && status && <FolderPanel status={status} anchor={anchor('folder')} onOpened={applyStatus} onClose={() => setPanel(null)} />}
-    {panel === 'search' && status && <SearchMenu mode={effectiveMode} search={search} model={status.model} anchor={anchor('search')} onMode={next => { setMode(next); saveSearchMode(next); if (submitted) setAskedMode(next); }} onSetUp={() => { setMode('visual'); saveSearchMode('visual'); void setUpSearch(); }} onUpload={() => uploadRef.current?.click()} onClose={() => setPanel(null)} />}
     {selected !== null && items[selected] && <Viewer items={items} index={selected} onChange={changeSelected} total={total} hasMore={more} loadingMore={loadingMore} pageError={error} rootName={folder?.name ?? ''} platform={status?.platform ?? ''} filters={filters} photos={!!folder?.photos} onClose={() => setSelected(null)} onSimilar={visualReady ? findSimilar : null} onFolder={showFolder} />}
     {picked && <Viewer items={[picked]} index={0} onChange={() => {}} total={1} hasMore={false} loadingMore={false} pageError="" rootName={folder?.name ?? ''} platform={status?.platform ?? ''} filters={filters} photos={!!folder?.photos} onClose={() => setPicked(null)} onSimilar={visualReady ? findSimilar : null} onFolder={showFolder} />}
     {carried && <img className="carried" src={imageUrl(carried.id)} alt="" style={{ left: carried.x, top: carried.y }} />}

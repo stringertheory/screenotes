@@ -38,16 +38,19 @@ svg { width: var(--icon); height: var(--icon); stroke-width: 1.5; flex-shrink: 0
 .secondary:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--muted); background: none; }
 .muted { color: var(--muted); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-.header { display: grid; grid-template-columns: 1fr minmax(220px, var(--search-width)) 1fr; align-items: center; gap: var(--s6); padding: var(--s4) var(--page) var(--s2); background: var(--bg); position: sticky; top: 0; z-index: 5; }
+.header { display: grid; grid-template-columns: 1fr minmax(220px, var(--search-width)) 1fr; align-items: start; gap: var(--s6); padding: var(--s4) var(--page) var(--s2); background: var(--bg); position: sticky; top: 0; z-index: 5; }
 /* Keyboard focus scrolls a tile clear of the sticky header, ring and all: the header's padding and search bar, then a step. */
-html { scroll-padding-top: calc(var(--s4) + var(--search-height) + var(--s2) * 2); }
-.wordmark { justify-self: start; padding: 0; min-height: var(--s10); display: flex; align-items: center; }
-.lockup { display: inline-flex; align-items: center; gap: 7px; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
-.lockup svg { width: 28px; height: 28px; }
-.compact-mark { display: none; width: 30px; height: 30px; }
-@media (max-width: 480px) { .wordmark .lockup { display: none; } .compact-mark { display: block; } }
-.welcome-mark { width: var(--s16); height: var(--s16); margin-bottom: var(--s4); }
-.header-actions { grid-column: -2; display: flex; gap: var(--s1); justify-content: flex-end; }
+html { scroll-padding-top: calc(var(--s4) + var(--search-height) + var(--control-nested) + var(--s2) * 3); }
+.wordmark { justify-self: start; padding: 0; min-height: var(--search-height); display: flex; align-items: center; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.search-area { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+.search-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); padding-inline: var(--s2); }
+.segmented { display: inline-flex; padding: 2px; gap: 2px; background: var(--soft); border-radius: var(--control-radius); }
+.segmented button { height: calc(var(--control-nested) - 4px); padding: 0 var(--s3); border-radius: calc(var(--control-radius) - 2px); color: var(--muted); white-space: nowrap; }
+.segmented button:hover:not(:disabled) { color: var(--ink); }
+.segmented [aria-checked='true'] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px #0000001f; }
+.like-file { height: var(--control-nested); padding: 0 var(--s3); gap: var(--s2); color: var(--muted); white-space: nowrap; }
+.like-file:hover:not(:disabled) { color: var(--ink); }
+.header-actions { grid-column: -2; min-height: var(--search-height); align-items: center; display: flex; gap: var(--s1); justify-content: flex-end; }
 /* The bar is a pill and its buttons are discs inset by the same amount on every side, so the last one is concentric
    with the bar's rounded end. The leading icon or image fills a slot of the same size, so both ends balance. */
 .search { --search-button: calc(var(--search-height) - var(--search-inset) * 2); height: var(--search-height); display: flex; align-items: center; gap: var(--search-inset); background: var(--soft); border-radius: var(--pill); padding: 0 var(--search-inset); }
@@ -257,9 +260,10 @@ main[data-timeline] .gallery { margin-right: calc(var(--page) + var(--timeline))
 @media (max-width: 720px) {
  :root { --page: 16px; --gap: 4px; --panel-width: min(360px, calc(100vw - 32px)); }
  .header { grid-template-columns: 1fr auto; gap: var(--s3); padding-top: var(--s4); }
- .search { grid-row: 2; grid-column: 1/-1; }
- /* The header's two rows, the controls and the search bar, the gap and padding between them, then a step. */
- html { scroll-padding-top: calc(var(--s4) + var(--control) + var(--search-height) + var(--s3) + var(--s2) * 2); }
+ .search-area { grid-row: 2; grid-column: 1/-1; }
+ .wordmark, .header-actions { min-height: var(--control); }
+ /* The header's rows, the controls, the search bar and its options, the gaps and padding between them, then a step. */
+ html { scroll-padding-top: calc(var(--s4) + var(--control) + var(--search-height) + var(--control-nested) + var(--s3) + var(--s2) * 3); }
  .view-switch { margin-right: 0; }
  .map-controls { bottom: var(--s4); }
  .map-note { bottom: var(--s4); }

@@ -362,7 +362,7 @@ class LaunchTests(unittest.TestCase):
 
     def test_an_older_running_copy_is_not_joined(self):
         with patch('server.api.running', return_value='0.0.1'), patch('server.api.hand_over', return_value=None), \
-                self.assertRaisesRegex(SystemExit, 'Screenotes 0.0.1 is already running.*Quit it'):
+                self.assertRaisesRegex(SystemExit, f'{APP["name"]} 0.0.1 is already running.*Quit it'):
             self.launch('--menubar')
 
     def test_a_port_in_use_or_reserved_is_explained(self):

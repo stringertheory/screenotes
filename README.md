@@ -1,5 +1,7 @@
 # Screenotes
 
+Screenotes is the project; in its window, menu bar item and browser tab the app is just called Screenshots.
+
 A browser for a folder of [Screenotate](https://screenotate.com) screenshots, with a note on each one. It's a fork of
 [Orchard Photos](https://github.com/chaseleantj/orchard-photos), so it keeps Orchard's timeline grid, visual search
 and map, and adds what Screenotate knows about each screenshot.
