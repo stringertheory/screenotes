@@ -74,8 +74,9 @@ run `scripts/install-login-item` again to restart it on the new version.
 
 - **Your screenshots** stay where Screenotate saves them. Screenotes keeps no copies.
 - **Your notes** are plain text files next to the screenshots: the note on `Screenshot 2022-01-25 at 11.33.14 PM.png`
-  is `Screenshot 2022-01-25 at 11.33.14 PM.txt`. You can read or edit them in any text editor, and the app picks up
-  your changes within a minute. Backing up the screenshot folder backs up the notes too. A note goes with its
+  is `Screenshot 2022-01-25 at 11.33.14 PM.txt`. You can read or edit them in any text editor. The app shows your
+  edit the next time you open that screenshot, and search finds it after the app's next look at the folder: within a
+  minute, or right away when you open the menu bar item. Backing up the screenshot folder backs up the notes too. A note goes with its
   screenshot by name, so if you rename a screenshot in Finder, rename its `.txt` the same way.
 - **Everything else** the app keeps, in `~/Library/Application Support/screenotes`, can be rebuilt, so you don't need
   to back it up: the thumbnails, the search index and the appearance model.
