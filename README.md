@@ -1,73 +1,111 @@
 # Screenotes
 
-Screenotes is the project; in its window, menu bar item and browser tab the app is just called Screenshots.
+Screenotes lets you look through, search and annotate the screenshots you take with
+[Screenotate](https://screenotate.com).
 
-A browser for a folder of [Screenotate](https://screenotate.com) screenshots, with a note on each one. It's a fork of
-[Orchard Photos](https://github.com/chaseleantj/orchard-photos), so it keeps Orchard's timeline grid, visual search
-and map, and adds what Screenotate knows about each screenshot.
+Screenotate saves each screenshot together with the text on the screen and where it came from: the app, the window
+title and, for web pages, the URL. Screenotes reads that folder and shows every screenshot in one place, newest first.
+You can search by any of that text, and write a note on each screenshot, such as why you took it. The note is saved as
+you type.
 
-Screenotes is an independent project. It is not affiliated with or endorsed by Screenotate or its author; it only reads
-the files Screenotate saves.
+It also puts an item in the menu bar, like Screenotate's: your recent screenshots and a search box, one click away.
+Clicking a screenshot opens it with its note.
 
-## What it adds to Orchard
+In the menu bar, the window and the browser tab, the app is called **Screenshots**.
 
-- **Screenotate pages are screenshots.** Screenotate saves each screenshot as a `.png` and a `.html` page that
-  embeds the same PNG. Screenotes reads the page, so the pair is one image, and a page whose PNG is gone still shows.
-- **Where it came from.** The viewer shows the app, window title and URL Screenotate recorded, and the screenshot is
-  dated by when it was taken.
-- **Notes.** The viewer has a note box for why you took the screenshot. It saves as you type.
-- **A menu bar item.** Recent screenshots and a search, as in Screenotate's menu, opening each one in the browser. Its settings choose whether searches are of text and notes (the default) or of appearance.
-- **Text search.** With the search set to *Text and notes*, each word must appear in the file name, the screen text,
-  the window, app or URL, or the note.
+## What you can do
 
-Notes live in `notes.sqlite` in the data folder (`~/Library/Application Support/screenotes` on a Mac), keyed by the
-screenshot's content hash. They are kept apart from the per-folder cache, so they survive a cache reset, renames and
-moves. Screenotes never changes your files.
+- **Browse.** Every screenshot in the folder, in a grid by date. Click one to see it full size, with the app, window
+  and URL it came from, the text Screenotate read from it, and your note.
+- **Write notes.** Each screenshot has a note box. Notes are saved as you type, and searching finds them too.
+- **Search by text.** Type a few words. A screenshot matches when every word appears somewhere in its screen text,
+  window title, app, URL, file name or note.
+- **Search by appearance.** Optionally, describe what a screenshot looked like ("a bar chart", "a map"), or find
+  screenshots that look like another one or like an image file. This needs a one-time download of about 500 MB, and
+  runs entirely on your Mac.
+- **See them on a map.** Screenshots laid out by how they look, so similar ones sit together. This also needs the
+  appearance download.
 
-## Running it
+Screenotes never changes, moves or deletes your screenshots. It only reads them.
+
+## Getting started
+
+You need a Mac with Python 3.12, 3.13 or 3.14 (`brew install python@3.13`), and Screenotate saving screenshots to
+a folder.
 
 ```bash
-./orchard ~/Documents/Screenshots            # its own window
-./orchard ~/Documents/Screenshots --browser  # or http://127.0.0.1:4410
-```
-
-To run it from the menu bar instead, like Screenotate:
-
-```bash
+git clone https://github.com/stringertheory/screenotes.git
+cd screenotes
 ./orchard ~/Documents/Screenshots --menubar
 ```
 
-The item lists recent screenshots and searches their text and notes. Clicking one opens it in the browser, with its
-note box. Return in the search field opens the full search. If Screenotes is already running in its window, the item
-uses that copy.
+Use the folder Screenotate saves to, which is set in Screenotate's preferences. The first run takes a minute
+or two to install what it needs, then reads the whole folder. After that, it only reads new screenshots. Next time,
+`./orchard --menubar` opens the folder you used last.
 
-To start the item at login, run `scripts/install-login-item`. It fills in
-[`scripts/login-item.plist.in`](scripts/login-item.plist.in) for this clone as a LaunchAgent named
-`local.screenotes.menubar` (choose another with `--label`), links it into `~/Library/LaunchAgents` and starts it. The
-item opens the folder last opened. A crash restarts it, and Quit keeps it quit until the next login. Its log is
-`~/Library/Logs/<label>.log`. After pulling new code, restart it with
-`launchctl kickstart -k gui/$(id -u)/<label>`; `scripts/install-login-item --remove` stops it starting at login.
+Other ways to open it:
 
-The first run installs the Python packages into `.venv`. Visual search downloads a ~500 MB model once, when you set
-it up; text search and notes work without it.
+```bash
+./orchard ~/Documents/Screenshots            # in its own window
+./orchard ~/Documents/Screenshots --browser  # in your browser, at http://127.0.0.1:4410
+```
 
-The rest of the documentation in [`docs/`](docs/) is Orchard's and still describes the base app, including
-[how it works](docs/how-it-works.md) and [development](docs/development.md). Orchard's own README is
-[`docs/orchard-readme.md`](docs/orchard-readme.md).
+All three share one copy. If one is already running, the others just open it.
 
-## Keeping screenshots out of the repo
+## The menu bar item
 
-The screenshots this app reads never belong in the repo, and three things keep them out. `.gitignore` ignores every
-image and HTML page except the app's own. [`scripts/check-no-screenshots`](scripts/check-no-screenshots) refuses any
-other image, by name or by contents, a file with an image embedded in it, as a Screenotate page has, and any file
-over 1 MB. It runs before each commit once the hook is turned on, which each clone does once:
+Click the item to see your most recent screenshots and a search box. Start typing to search. Press Return to see all
+the results in the browser. Click a screenshot to open it in the browser with its note.
+
+The gear button has the settings: whether searches are by text and notes (the default) or by appearance, how many
+screenshots the menu shows, and Quit.
+
+### Starting it at login
+
+```bash
+scripts/install-login-item           # start at login, and start it now
+scripts/install-login-item --remove  # stop starting at login
+```
+
+If it crashes, it restarts itself. If you quit it, it stays quit until you next log in. After updating the code,
+run `scripts/install-login-item` again to restart it on the new version.
+
+## Where your data is
+
+- **Your screenshots** stay where Screenotate saves them. Screenotes keeps no copies.
+- **Your notes** are in `~/Library/Application Support/screenotes/notes.sqlite`. This is the one thing only
+  Screenotes has, so make sure your backups include it. A note stays attached to its screenshot even if you rename or
+  move the file.
+- **Everything else** in that folder can be rebuilt, so you don't need to back it up: the thumbnails, the search index
+  and the appearance model.
+
+## Privacy
+
+Everything runs on your Mac. The app is reachable only from your own computer, never from other devices on your
+network, and it turns away requests from other websites. Nothing about your screenshots is sent anywhere.
+
+## Credits
+
+Screenotes is built on [Orchard Photos](https://github.com/chaseleantj/orchard-photos) by Chase Lean, an app for
+browsing and searching a folder of photos. The grid, the appearance search and the map come from Orchard; Screenotes
+adds reading Screenotate's screenshots, the notes and the menu bar item. Orchard's own documentation is in
+[`docs/`](docs/), starting with [`docs/orchard-readme.md`](docs/orchard-readme.md).
+
+Screenotes is an independent project, not affiliated with or endorsed by Screenotate or its author. It only reads the
+files Screenotate saves.
+
+## For development
+
+Screenshots must never be committed to this repo. Each clone turns on a check that runs before every commit and
+refuses images, pages with images inside them, and large files:
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-`tests/test_no_screenshots.py` runs the same check over every tracked file.
+The tests run the same check over the whole repo. Tests, linting and the build are listed in [`AGENTS.md`](AGENTS.md).
 
 ## License
 
-[MIT](LICENSE), as Orchard is. Orchard's copyright notice stays in it, beside one for the Screenotes changes.
+[MIT](LICENSE), the same as Orchard. The license keeps Orchard's copyright notice alongside the one for the Screenotes
+changes.
