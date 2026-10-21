@@ -35,5 +35,4 @@ Never print screenshot contents (OCR text, window titles, URLs) from the real fo
 - Fuzzy text search: SQLite FTS5 with the trigram tokenizer over screen text, titles, URL and notes.
 - One search box: merge the text and visual rankings with reciprocal rank fusion (`1/(60 + rank)` summed).
 - Embed note text with SigLIP's text encoder, so a note matches by meaning too.
-- Menu bar: a global hotkey to open it, launch at login (a LaunchAgent named `local.screenotes`), and reusing one
-  browser tab instead of opening a new one per click.
+- Menu bar: a global hotkey to open it, and reusing one browser tab instead of opening a new one per click.

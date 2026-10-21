@@ -38,6 +38,18 @@ The item lists recent screenshots and searches their text and notes. Clicking on
 note box. Return in the search field opens the full search. If Screenotes is already running in its window, the item
 uses that copy.
 
+At login the item starts from the LaunchAgent `local.screenotes.menubar.plist` in this directory, with the folder
+last opened. The plist is symlinked into `~/Library/LaunchAgents`. A crash restarts it, and Quit keeps it quit until the
+next login. Its log is `~/Library/Logs/local.screenotes.menubar.log`. To install or remove it:
+
+```bash
+ln -s /path/to/screenotes/local.screenotes.menubar.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.screenotes.menubar.plist   # start now
+launchctl bootout gui/$(id -u)/local.screenotes.menubar && rm ~/Library/LaunchAgents/local.screenotes.menubar.plist
+```
+
+After pulling new code, restart it: `launchctl kickstart -k gui/$(id -u)/local.screenotes.menubar`.
+
 The first run installs the Python packages into `.venv`. Visual search downloads a ~500 MB model once, when you set
 it up; text search and notes work without it.
 
