@@ -14,6 +14,7 @@ window.EXCALIDRAW_ASSET_PATH = '/excalidraw/';
 // the saved SVG only its name.
 const SCREENSHOT = 'screenshot';
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const XLINK_NS = 'http://www.w3.org/1999/xlink';
 // A screenshot this many pixels on its longer side is taken as a Retina one, two pixels to a point, and is placed in
 // the scene at half size, so Excalidraw's text and lines come out the size they would be on screen. Saving scales back
 // to pixels.
@@ -109,7 +110,27 @@ async function toSvg(elements: readonly ExcalidrawElement[], files: BinaryFiles,
   root.setAttribute('viewBox', box.join(' '));
   root.setAttribute('width', String(box[2]));
   root.setAttribute('height', String(box[3]));
+  inlineImages(root);
   return new XMLSerializer().serializeToString(root);
+}
+
+/** Each image drawn where it is used, linked with xlink:href. Excalidraw draws images from a <symbol> through <use>
+ *  with SVG 2's plain href, and Inkscape shows neither. Browsers read xlink:href as well. */
+function inlineImages(root: SVGSVGElement) {
+  root.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xlink', XLINK_NS);
+  for (const use of [...root.querySelectorAll('use')]) {
+    const id = use.getAttribute('href')?.replace(/^#/, '');
+    const source = id && root.querySelector(`symbol#${CSS.escape(id)} > image`);
+    if (!source) continue;
+    const image = document.createElementNS(SVG_NS, 'image');
+    for (const { name, value } of [...use.attributes]) if (name !== 'href') image.setAttribute(name, value);
+    // A cropped image keeps its whole size, and its mask crops it; otherwise it fills the place it is used.
+    for (const name of ['width', 'height']) if (!source.getAttribute(name)?.endsWith('%')) image.setAttribute(name, source.getAttribute(name)!);
+    image.setAttribute('preserveAspectRatio', 'none');
+    image.setAttributeNS(XLINK_NS, 'xlink:href', source.getAttribute('href')!);
+    use.replaceWith(image);
+  }
+  for (const symbol of [...root.querySelectorAll('symbol')]) if (symbol.querySelector(':scope > image')) symbol.remove();
 }
 
 async function fetchBlob(url: string, signal: AbortSignal) {

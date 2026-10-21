@@ -210,7 +210,9 @@ test('draws on a screenshot in Excalidraw and keeps the drawing as an SVG beside
     const svg = readFileSync(drawing, 'utf8');
     expect(svg).toContain('<!-- svg-source:excalidraw -->');
     expect(svg).toContain('payload-type:application/vnd.excalidraw+json');
-    expect(svg).toContain('href="red.png"');
+    // Drawn as a plain image, linked the old way too, which Inkscape needs.
+    expect(svg).toContain('xlink:href="red.png"');
+    expect(svg).not.toContain('<symbol');
     expect(svg).not.toContain('data:image/png');
     const [left, top, width, height] = svg.match(/viewBox="([^"]+)"/)![1].split(' ').map(Number);
     expect(left).toBeLessThan(48);
