@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, ChevronRight, FolderOpen, Image as ImageIcon, Images, X } from 'lucide-react';
-import type { Facets, Filters, LibraryStatus, Model, Range, SearchMode, SearchStatus, Status, Updates } from './types';
+import type { Facets, Filters, LibraryStatus, Model, Range, SearchMode, SearchStatus, Status } from './types';
 import { APP_NAME, RANGES, SET_UP, defaults, megabytes, plural, post, request, searchable, settingUp, typeLabel } from './types';
 import { Progress } from './Progress';
 import { searchWork } from './Activity';
@@ -152,31 +152,21 @@ export function LibraryPanel({ status, shown, narrowed, scanLeft, searchLeft, an
   </Panel>;
 }
 
-/** The update check and Copy diagnostics, under the version in Info. */
+/** Copy diagnostics, under the version in Info. Orchard's update check asks about Orchard's releases, so this fork
+ *  leaves its setting out, and the check stays off. */
 function About({ library }: { library: LibraryStatus }) {
-  const [updates, setUpdates] = useState<Updates | null>(null);
   const [report, setReport] = useState('');
   const [copied, setCopied] = useState<'copied' | 'select' | null>(null);
-  const [error, setError] = useState('');
   const reportArea = useRef<HTMLTextAreaElement>(null);
-  // An update check that fails says nothing; the next day's check tries again.
-  useEffect(() => { request<Updates>('/api/updates').then(setUpdates, () => {}); }, []);
   // Fetched ahead of the click, since a webview may only allow the copy while the click is being handled.
   const { scan, search, revision } = library;
   useEffect(() => { request<{ report: string }>('/api/diagnostics').then(data => setReport(data.report), () => {}); }, [scan.state, scan.error, search.state, search.error, revision]);
   useEffect(() => { if (copied !== 'copied') return; const timer = setTimeout(() => setCopied(null), COPIED_FOR); return () => clearTimeout(timer); }, [copied]);
   useEffect(() => { if (copied === 'select') reportArea.current?.select(); }, [copied]);
-  const turn = async (enabled: boolean) => {
-    setError(''); setUpdates(old => old && { ...old, enabled });
-    try { setUpdates(await post<Updates>('/api/updates', { enabled })); } catch (e) { setUpdates(old => old && { ...old, enabled: !enabled }); setError((e as Error).message); }
-  };
   const copy = async (button: HTMLElement) => setCopied(await copyText(report, button) ? 'copied' : 'select');
   return <>
-    {updates?.update && <div className="panel-action"><p>Version {updates.update.version} is available.</p><a className="text-button secondary" href={updates.update.url} target="_blank" rel="noreferrer">See the release</a></div>}
-    <label className="check"><input type="checkbox" checked={!!updates?.enabled} disabled={!updates} aria-describedby="updates-note" onChange={e => void turn(e.target.checked)} /><span>Check for updates on GitHub<span className="muted" id="updates-note">Once a day, {APP_NAME} asks GitHub whether a newer version is out. Nothing about your images is sent.</span></span></label>
     <div className="panel-action"><p role="status">{copied === 'copied' ? 'Copied. Paste it into your bug report.' : copied === 'select' ? 'Copy the text below into your bug report.' : 'For bug reports, without file names or folders.'}</p><button className="text-button secondary" disabled={!report} onClick={e => void copy(e.currentTarget)}>{copied === 'copied' && <Check />}Copy diagnostics</button></div>
     {copied === 'select' && <textarea ref={reportArea} className="report" readOnly rows={report.split('\n').length} value={report} aria-label="Diagnostics" />}
-    {error && <p className="error-copy" role="alert">{error}</p>}
   </>;
 }
 
