@@ -7,10 +7,7 @@ import unittest
 
 from PIL import Image
 
-from server.api import App
-from server.cache import connect
 from server.library import Library
-from server.notes import Notes
 from server.screenotate import captured_at, parse
 from server.semantic import Encoder
 
@@ -66,11 +63,10 @@ class ScreenotateFolderTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.folder = Path(self.temp.name) / 'Screenshots'
         self.folder.mkdir()
-        self.notes = Notes(Path(self.temp.name) / 'notes.sqlite')
         self.library = self.open()
 
     def open(self):
-        return Library(self.folder, Path(self.temp.name) / 'cache', Encoder(Path(self.temp.name) / 'models'), self.notes)
+        return Library(self.folder, Path(self.temp.name) / 'cache', Encoder(Path(self.temp.name) / 'models'))
 
     def save(self, name, image, **fields):
         (self.folder / f'{name}.html').write_bytes(page(image, **fields))
@@ -120,22 +116,37 @@ class ScreenotateFolderTests(unittest.TestCase):
         self.assertEqual(self.ids('router quarterly'), [browser_id])
         self.assertEqual(self.ids('router disk'), [])
 
-    def test_a_note_outlives_the_cache_and_its_file_and_blank_removes_it(self):
+    def test_a_note_is_a_text_file_beside_the_screenshot_and_blank_removes_it(self):
         image = self.save('Screenshot C', png())
+        (self.folder / 'Screenshot C.png').write_bytes(image)
         self.scan()
         image_id = self.library.pictures({})['items'][0]['id']
-        self.assertEqual(self.library.save_note(image_id, 'Bug to report')['text'], 'Bug to report')
-        (self.folder / 'Screenshot C.html').unlink()
-        self.scan()
-        with connect(self.library.directory) as db:
-            self.assertEqual(db.execute('SELECT count(*) FROM captures').fetchone()[0], 0)
-        (self.folder / 'moved').mkdir()
-        (self.folder / 'moved/Screenshot C.png').write_bytes(image)
-        self.library = self.open()
-        self.scan()
-        self.assertEqual(self.library.details(image_id)['note']['text'], 'Bug to report')
+        self.assertEqual(self.library.save_note(image_id, 'Bug to report\n'), {'text': 'Bug to report\n', 'file': 'Screenshot C.txt'})
+        self.assertEqual((self.folder / 'Screenshot C.txt').read_text(), 'Bug to report\n')
+        self.assertEqual(sorted(path.name for path in self.folder.iterdir()), ['Screenshot C.html', 'Screenshot C.png', 'Screenshot C.txt'])
+        self.library.save_note(image_id, 'Bug reported')
+        self.assertEqual((self.folder / 'Screenshot C.txt').read_text(), 'Bug reported')
         self.assertIsNone(self.library.save_note(image_id, '  \n'))
+        self.assertFalse((self.folder / 'Screenshot C.txt').exists())
         self.assertIsNone(self.library.details(image_id)['note'])
+
+    def test_a_note_written_outside_the_app_is_read_and_searched_after_a_scan(self):
+        self.save('Screenshot D', png('blue'))
+        self.library.scan()
+        image_id = self.library.pictures({})['items'][0]['id']
+        (self.folder / 'Screenshot D.txt').write_text('Typed in TextEdit')
+        self.assertEqual(self.ids('textedit'), [])
+        self.library.scan()
+        self.assertEqual(self.ids('textedit'), [image_id])
+        self.assertEqual(self.library.details(image_id)['note'], {'text': 'Typed in TextEdit', 'file': 'Screenshot D.txt'})
+        # A new library on the same folder, as after a restart, reads the notes without a scan.
+        self.assertEqual(self.open().noted('textedit'), [image_id])
+
+    def test_a_text_file_without_a_screenshot_is_not_a_note(self):
+        self.save('Screenshot E', png('green'))
+        (self.folder / 'Shopping list.txt').write_text('eggs')
+        self.library.scan()
+        self.assertEqual(self.library.notes, {})
 
     def test_one_screenshot_can_be_asked_for_by_id_as_its_tile(self):
         self.save('one', png('red'))
@@ -148,13 +159,12 @@ class ScreenotateFolderTests(unittest.TestCase):
             self.library.pictures({'id': 'not-an-image'})
 
     def test_overlong_notes_are_refused(self):
+        self.save('Screenshot F', png())
+        self.scan()
+        image_id = self.library.pictures({})['items'][0]['id']
         with self.assertRaises(ValueError):
-            self.notes.save('a' * 64, 'x' * 10_001)
-
-    def test_the_app_keeps_one_notes_file_for_every_folder(self):
-        app = App(Path(self.temp.name) / 'data')
-        self.assertEqual(app.notes.path, Path(self.temp.name).resolve() / 'data' / 'notes.sqlite')
-
+            self.library.save_note(image_id, 'x' * 10_001)
+        self.assertFalse((self.folder / 'Screenshot F.txt').exists())
 
 if __name__ == '__main__':
     unittest.main()

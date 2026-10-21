@@ -11,7 +11,8 @@ export interface Picture { id: string; width: number; height: number; mime: stri
 interface FileCopy { path: string; modified: string }
 /** What Screenotate kept about a screenshot: where it came from, and the text it read off the screen. */
 export interface Capture { url: string | null; captured: string | null; window: string | null; app: string | null; text: string | null }
-export interface Note { text: string; created: string; updated: string }
+/** A note is a text file beside its screenshot; `file` is its path in the folder. */
+export interface Note { text: string; file: string }
 export interface Details { id: string; width: number; height: number; mime: string; size: number; taken: string | null; camera: string | null; root: string; source: 'folder' | 'photos'; files: FileCopy[]; preview: boolean; capture: Capture | null; note: Note | null }
 /** `received` and `size` are bytes, sent while the model downloads. */
 export interface SearchStatus { state: 'idle' | 'downloading' | 'loading' | 'indexing' | 'ready' | 'error'; indexed: number; total: number; downloaded: boolean; received?: number; size?: number; error?: string }

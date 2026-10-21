@@ -21,7 +21,6 @@ import webbrowser
 from server import menubar, photos
 from server.diagnostics import LAST_ERROR, report
 from server.library import IMAGE_ID, Library
-from server.notes import Notes
 from server.semantic import Encoder
 from server.updates import Updates
 from server.window import Window, become_app, unavailable
@@ -76,7 +75,6 @@ class App:
         self.data_dir = Path(data_dir).resolve()
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.encoder = Encoder(self.data_dir / 'models')
-        self.notes = Notes(self.data_dir / 'notes.sqlite')
         self.recent_path = self.data_dir / 'recent.json'
         self.updates = Updates(self.data_dir / 'updates.json', APP['version'], f'{APP["name"]}/{APP["version"]}')
         self.library: Library | None = None
@@ -124,7 +122,7 @@ class App:
             if self.library:
                 self.library.close()
             key = hashlib.sha256(str(folder).encode()).hexdigest()[:16]
-            library = self.library = Library(folder, self.data_dir / 'libraries' / key, self.encoder, self.notes)
+            library = self.library = Library(folder, self.data_dir / 'libraries' / key, self.encoder)
             self.remember(folder)
         threading.Thread(target=library.scan, daemon=True).start()
         return library

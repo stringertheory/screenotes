@@ -9,12 +9,11 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from PIL import Image
 
-from server import photos, screenotate
+from server import notes, photos, screenotate
 from server.atlas import Atlas
 from server.cache import connect, extracted_path, preview_path, thumbnail_path, while_open
 from server.groups import Groups
 from server.layout import Layout
-from server.notes import Notes
 from server.scanner import FolderUnavailable, ScanCancelled, Scanner, scaled
 from server.semantic import SemanticIndex
 
@@ -46,12 +45,13 @@ def utc_offset(params) -> int:
 
 
 class Library:
-    def __init__(self, folder: Path, directory: Path, encoder, notes: Notes | None = None):
+    def __init__(self, folder: Path, directory: Path, encoder):
         self.folder = Path(folder)
         self.directory = Path(directory)
-        self.notes = notes or Notes(self.directory / 'notes.sqlite')
         self.photos = photos.is_library(self.folder)
         self.scanner = Scanner(self.folder, self.directory, photos.PhotosLibrary(self.directory) if self.photos else None)
+        # Each image's note text, for search. The note files are the notes; this is read again after every scan.
+        self.notes = {}
         self.semantic = SemanticIndex(self.directory, encoder)
         self.atlas = Atlas(self.directory)
         self.layout = Layout(self.semantic)
@@ -79,6 +79,7 @@ class Library:
         except (OSError, ValueError):
             self.stats = {}
         (self.directory / 'folder.txt').write_text(str(self.folder) + '\n', encoding='utf-8')
+        self.read_notes()
 
     def close(self):
         """Stop background work for a folder that is no longer shown."""
@@ -96,6 +97,8 @@ class Library:
             def committed():
                 self.revision += 1
             self.stats = self.scanner.scan(progress, committed, self.closed.is_set, retry)
+            # Notes written or changed outside the app, or beside screenshots this scan found, are searchable now.
+            self.read_notes()
             self.stats['updated'] = datetime.now(UTC).isoformat()
             self.stats_path.write_text(json.dumps(self.stats), encoding='utf-8')
             self.scan_state = {'state': 'ready'}
@@ -236,7 +239,7 @@ class Library:
                 pattern = '%' + word.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
                 where.append(f"(f.path LIKE ? ESCAPE '\\' OR {CAPTURE_TEXT} LIKE ? ESCAPE '\\' "
                              "OR f.image_id IN (SELECT value FROM json_each(?)))")
-                values += [pattern, pattern, json.dumps(self.notes.matching(word))]
+                values += [pattern, pattern, json.dumps(self.noted(word))]
             rows = self.tiles(where, values)
         else:
             self.require_search()
@@ -293,15 +296,65 @@ class Library:
             capture = db.execute('SELECT url, captured, window, app, text FROM captures WHERE image_id=?', (image_id,)).fetchone()
         return {**dict(image), 'root': photos.NAME if self.photos else str(self.folder), 'source': 'photos' if self.photos else 'folder',
                 'files': files, 'preview': image['mime'] not in WEB_TYPES, 'capture': dict(capture) if capture else None,
-                'note': self.notes.get(image_id)}
+                'note': self.note(image_id)}
+
+    def note_files(self, image_id) -> list[Path]:
+        """Where an image's note can be: beside each of its files, the one it is shown by first."""
+        if self.photos:
+            return []
+        with connect(self.directory, rows=True) as db:
+            rows = db.execute(f'SELECT path FROM files f WHERE image_id=? ORDER BY {PAGE_LAST}, path', (image_id,)).fetchall()
+        return list(dict.fromkeys(notes.note_path(self.folder, row['path']) for row in rows))
+
+    def note(self, image_id):
+        """An image's note as {'text', 'file'}, file being its path in the folder, or None."""
+        for path in self.note_files(image_id):
+            if (text := notes.read(path)) is not None:
+                return {'text': text, 'file': path.relative_to(self.folder).as_posix()}
+        return None
 
     def save_note(self, image_id, text):
-        note = self.notes.save(image_id, text)
+        """Write an image's note beside it, in the note file it already has or else beside the file it is shown by.
+        Blank text removes the note."""
+        if self.photos:
+            raise ValueError('Notes are kept beside screenshots in a folder, so photos in Photos have none.')
+        if not isinstance(text, str):
+            raise ValueError('Write the note as text.')
+        places = self.note_files(image_id)
+        if not places:
+            raise ValueError('Choose an image from this folder.')
+        kept = {key: value for key, value in self.notes.items() if key != image_id}
+        if text.strip():
+            notes.write(next((path for path in places if path.exists()), places[0]), text)
+            kept[image_id] = text
+        else:
+            for path in places:
+                notes.write(path, '')
+        # Replaced whole, not changed in place, so a search running meanwhile reads one or the other.
+        self.notes = kept
         # Text search reads notes, so the grid's tiles are read again. The revision stays, so open pages aren't
         # refreshed under the note being written.
         with self._tiles_lock:
             self._tiles = None
-        return note
+        return self.note(image_id)
+
+    def read_notes(self):
+        """Read every note beside the folder's images into the search index."""
+        if self.photos:
+            return
+        found = {}
+        with connect(self.directory, rows=True) as db:
+            rows = db.execute('SELECT path, image_id FROM files WHERE image_id IS NOT NULL').fetchall()
+        # A png and its page share one note file, so each is read once.
+        for path, image_id in dict.fromkeys((notes.note_path(self.folder, row['path']), row['image_id']) for row in rows):
+            if (text := notes.read(path)) is not None:
+                found[image_id] = f'{found[image_id]}\n{text}' if image_id in found else text
+        self.notes = found
+
+    def noted(self, word: str) -> list[str]:
+        """The images whose note contains the word, ignoring case."""
+        word = word.casefold()
+        return [image_id for image_id, text in self.notes.items() if word in text.casefold()]
 
     def path(self, image_id, relative=None):
         """An image's path in the folder: the named copy if given and it holds this image, else the first."""

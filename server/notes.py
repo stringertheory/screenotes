@@ -1,59 +1,39 @@
-"""Notes written about images, kept apart from any folder's cache: a cache can be deleted and rebuilt, and a note can't.
+"""Notes on screenshots, each a plain text file beside its screenshot.
 
-Notes are keyed by the image's content hash, so one follows its image through renames and moves, into any folder that
-holds it, and stays when its file is gone for a while.
+`Screenshot 2022-01-25 at 11.33.14 PM.txt` is the note on `Screenshot 2022-01-25 at 11.33.14 PM.png` and `.html`: they
+go together by name, the way Screenotate's own two files do. The text file is the whole note, so it can be read,
+edited, searched and backed up without this app, and the app keeps only an index of them for search.
 """
-from contextlib import contextmanager
-from datetime import UTC, datetime
+import os
 from pathlib import Path
-import sqlite3
 
 # Long enough for any note, and within what a JSON request may carry.
 NOTE_LIMIT = 10_000
+SUFFIX = '.txt'
 
 
-class Notes:
-    def __init__(self, path: Path):
-        self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as db:
-            db.executescript('''
-                PRAGMA journal_mode=WAL;
-                CREATE TABLE IF NOT EXISTS notes (
-                    image_id TEXT PRIMARY KEY, text TEXT NOT NULL, created TEXT NOT NULL, updated TEXT NOT NULL
-                );
-            ''')
+def note_path(folder: Path, relative: str) -> Path:
+    """Where the note on the screenshot at `relative` in `folder` is kept."""
+    return Path(folder, relative).with_suffix(SUFFIX)
 
-    @contextmanager
-    def _connect(self):
-        connection = sqlite3.connect(self.path, timeout=30)
-        connection.row_factory = sqlite3.Row
-        try:
-            with connection:
-                yield connection
-        finally:
-            connection.close()
 
-    def get(self, image_id: str) -> dict | None:
-        with self._connect() as db:
-            row = db.execute('SELECT text, created, updated FROM notes WHERE image_id=?', (image_id,)).fetchone()
-        return dict(row) if row else None
+def read(path: Path) -> str | None:
+    """A note's text, or None when there is no note."""
+    try:
+        return path.read_text(encoding='utf-8', errors='replace')
+    except (FileNotFoundError, IsADirectoryError, NotADirectoryError):
+        return None
 
-    def save(self, image_id: str, text: str) -> dict | None:
-        """Keep a note, or remove it when the text is blank. Returns the note as kept."""
-        if not isinstance(text, str) or len(text) > NOTE_LIMIT:
-            raise ValueError(f'Keep the note under {NOTE_LIMIT:,} characters.')
-        with self._connect() as db:
-            if not text.strip():
-                db.execute('DELETE FROM notes WHERE image_id=?', (image_id,))
-                return None
-            now = datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
-            db.execute('INSERT INTO notes VALUES (?,?,?,?) ON CONFLICT(image_id) DO UPDATE SET text=excluded.text, '
-                       'updated=excluded.updated', (image_id, text, now, now))
-        return self.get(image_id)
 
-    def matching(self, word: str) -> list[str]:
-        """The images whose note contains the word, ignoring case."""
-        pattern = '%' + word.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
-        with self._connect() as db:
-            return [row[0] for row in db.execute("SELECT image_id FROM notes WHERE text LIKE ? ESCAPE '\\'", (pattern,))]
+def write(path: Path, text: str):
+    """Keep a note, or remove it when the text is blank. The new text replaces the old in one step, so a note is never
+    left half written."""
+    if not isinstance(text, str) or len(text) > NOTE_LIMIT:
+        raise ValueError(f'Keep the note under {NOTE_LIMIT:,} characters.')
+    if not text.strip():
+        path.unlink(missing_ok=True)
+        return
+    # Hidden, so Finder doesn't show it for the moment it exists.
+    temporary = path.with_name(f'.{path.name}.saving')
+    temporary.write_text(text, encoding='utf-8')
+    os.replace(temporary, path)
