@@ -29,6 +29,8 @@ PREVIEW_EDGE = 4096
 # Text search reads each image's file names, Screenotate's details and its note.
 CAPTURE_TEXT = ("coalesce((SELECT coalesce(c.text,'')||' '||coalesce(c.window,'')||' '||coalesce(c.app,'')||' '||"
                 "coalesce(c.url,'') FROM captures c WHERE c.image_id=f.image_id),'')")
+# A text search's terms: a "quoted phrase", straight or curly quotes, or a word. A lone quote mark is dropped.
+TERMS = re.compile(r'["\u201c\u201d]([^"\u201c\u201d]+)["\u201c\u201d]|([^\s"\u201c\u201d]+)')
 # Of a screenshot's PNG and the Screenotate page that embeds it, the PNG is the file to show and name.
 PAGE_LAST = "f.path LIKE '%.html'"
 # The most a viewer's time zone can be from UTC, in minutes.
@@ -42,6 +44,11 @@ def utc_offset(params) -> int:
         return max(-MAX_OFFSET, min(MAX_OFFSET, int(params.get('tz') or 0)))
     except ValueError:
         raise ValueError('Use a valid date range.') from None
+
+
+def terms(query: str) -> list[str]:
+    """The words and quoted phrases a text search must each find."""
+    return [term for phrase, word in TERMS.findall(query) if (term := (phrase or word).strip())]
 
 
 class Library:
@@ -235,7 +242,7 @@ class Library:
         limit = min(MAX_PAGE, max(1, int(params.get('limit', str(PAGE_SIZE)))))
         visual = bool(image_bytes or reference or (query and params.get('mode') == 'visual'))
         if not visual:
-            for word in query.split():
+            for word in terms(query):
                 pattern = '%' + word.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
                 where.append(f"(f.path LIKE ? ESCAPE '\\' OR {CAPTURE_TEXT} LIKE ? ESCAPE '\\' "
                              "OR f.image_id IN (SELECT value FROM json_each(?)))")

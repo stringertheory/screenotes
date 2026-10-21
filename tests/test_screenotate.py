@@ -116,6 +116,16 @@ class ScreenotateFolderTests(unittest.TestCase):
         self.assertEqual(self.ids('router quarterly'), [browser_id])
         self.assertEqual(self.ids('router disk'), [])
 
+    def test_quotes_make_a_phrase_rather_than_being_searched_for(self):
+        self.save('one', png('red'), text='A pen-plotted map of the coast')
+        self.save('two', png('green'), text='The pen, and a plotted course')
+        self.scan()
+        [map_id] = self.ids('pen-plotted')
+        self.assertEqual(self.ids('"pen-plotted"'), [map_id])
+        self.assertEqual(self.ids('\u201cpen-plotted map\u201d'), [map_id])
+        self.assertEqual(len(self.ids('pen plotted')), 2)
+        self.assertEqual(self.ids('"plotted map'), [map_id])
+
     def test_a_note_is_a_text_file_beside_the_screenshot_and_blank_removes_it(self):
         image = self.save('Screenshot C', png())
         (self.folder / 'Screenshot C.png').write_bytes(image)
