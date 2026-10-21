@@ -12,9 +12,12 @@ fixes still merge: `git fetch upstream && git merge upstream/main`.
   page and its `.png` are one image; writes the `captures` table, and dates the image by the capture.
 - `server/library.py`: prefers the `.png` over the page for naming and showing (`PAGE_LAST`); writes out the embedded
   PNG for a page with no PNG beside it; text search matches path, `captures` fields and notes.
-- `server/notes.py`: notes in `<data dir>/notes.sqlite`, not in the per-folder cache, which is disposable. Keyed by
-  the image id (SHA-256 of the image bytes), so a note survives renames, moves and a cache reset. A note whose image
-  is gone is kept, hidden, and shows again if the image comes back; nothing prunes them yet.
+- `server/notes.py` and `Library.note`/`save_note`/`read_notes`: a note is a plain UTF-8 text file beside its
+  screenshot, `<name>.txt` for `<name>.png`/`.html`, paired by name only, as Screenotate pairs its two files. The file
+  is the whole note (no header). A new note goes beside the file the image is shown by; clearing it deletes the file;
+  saves go through a hidden temporary file and `os.replace`. `Library.notes` is only a search index (image id → text),
+  read when the library opens and after every scan, so edits made outside the app show up on the next scan. Renames
+  aren't followed: a `.txt` with no screenshot of its name is ignored. Photos libraries have no notes.
 - `server/menubar.py` and `web/src/Menu.tsx`: `--menubar` runs an NSStatusItem whose NSPopover holds a WKWebView of
   `/menu`. The page sends `{action, value}` string messages through `window.webkit.messageHandlers.screenotes`;
   `menubar.action()` validates them and opens `/?image=<id>` or `/?mode=name&q=…` in the default browser. With a

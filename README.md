@@ -26,7 +26,7 @@ In the menu bar, the window and the browser tab, the app is called **Screenshots
 - **See them on a map.** Screenshots laid out by how they look, so similar ones sit together. This also needs the
   appearance download.
 
-Screenotes never changes, moves or deletes your screenshots. It only reads them.
+Screenotes never changes, moves or deletes your screenshots. The only files it writes are your notes.
 
 ## Getting started
 
@@ -73,11 +73,12 @@ run `scripts/install-login-item` again to restart it on the new version.
 ## Where your data is
 
 - **Your screenshots** stay where Screenotate saves them. Screenotes keeps no copies.
-- **Your notes** are in `~/Library/Application Support/screenotes/notes.sqlite`. This is the one thing only
-  Screenotes has, so make sure your backups include it. A note stays attached to its screenshot even if you rename or
-  move the file.
-- **Everything else** in that folder can be rebuilt, so you don't need to back it up: the thumbnails, the search index
-  and the appearance model.
+- **Your notes** are plain text files next to the screenshots: the note on `Screenshot 2022-01-25 at 11.33.14 PM.png`
+  is `Screenshot 2022-01-25 at 11.33.14 PM.txt`. You can read or edit them in any text editor, and the app picks up
+  your changes within a minute. Backing up the screenshot folder backs up the notes too. A note goes with its
+  screenshot by name, so if you rename a screenshot in Finder, rename its `.txt` the same way.
+- **Everything else** the app keeps, in `~/Library/Application Support/screenotes`, can be rebuilt, so you don't need
+  to back it up: the thumbnails, the search index and the appearance model.
 
 ## Privacy
 
@@ -98,7 +99,6 @@ Screenotes is built on [Orchard Photos](https://github.com/chaseleantj/orchard-p
 - **Notes found by meaning**, not just their exact words (embed note text with the same model appearance search uses).
 - **A keyboard shortcut** to open the menu bar item from anywhere, like Screenotate's.
 - **One browser tab** reused for screenshots opened from the menu, instead of a new tab per click.
-- **Tidy up notes** whose screenshot was deleted, say 30 days after it's gone, so restoring from the Trash still works.
 
 ## For development
 

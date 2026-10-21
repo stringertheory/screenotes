@@ -1,7 +1,7 @@
 {
   "name": "Screenshots",
   "slug": "screenotes",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "port": 4410,
   "devPort": 5183
 }
