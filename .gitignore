@@ -1,6 +1,7 @@
 # Dependencies and environments
 node_modules/
-.venv/
+.venv
+.venv-*
 .venv.lock*
 __pycache__/
 
